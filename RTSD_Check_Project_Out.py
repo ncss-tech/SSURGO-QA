@@ -210,7 +210,7 @@ def appendToProjectRecord(nasisMUKEYs, prjRecordFC, regionOwnership, ssurgoInput
         arcpy.env.overwriteOutput = True
         rtsdDB = GetWorkspace(prjRecordFC)
         rtsdDir = os.path.dirname(rtsdDB)
-        ssurgoInputLayer = currentProject
+        ssurgoInputLayer = arcpy.ValidateTableName(currentProject)
         env.workspace = rtsdDB
 
         # Parse Region # from the RTSD FGDB name
@@ -294,14 +294,14 @@ def appendToProjectRecord(nasisMUKEYs, prjRecordFC, regionOwnership, ssurgoInput
         fieldMap = GetFieldInfo(tempPrjMapunits)
 
         arcpy.Append_management(tempPrjMapunits, prjRecordFC, "NO_TEST",fieldMap)
-        outLayer = theDir + os.sep + currentProject
+        outLayer = theDir + os.sep + arcpy.ValidateTableName(currentProject)
 
         if arcpy.Exists(outLayer):
             arcpy.Delete_management(outLayer)
-        #arcpy.SaveToLayerFile_management(ssurgoInputLayer,theDir + os.sep + arcpy.ValidateTableName(currentProject), "ABSOLUTE")
-        arcpy.SaveToLayerFile_management(ssurgoInputLayer,theDir + os.sep + currentProject, "ABSOLUTE")
 
-        AddMsgAndPrint(" \tSuccessfully added " + str(Number_Format(projectCnt, 0, True)) + " mapunit polygons to the ProjectRecord feature class", 0)
+        arcpy.SaveToLayerFile_management(ssurgoInputLayer,outLayer,"ABSOLUTE")
+
+        AddMsgAndPrint("\tSuccessfully added " + str(Number_Format(projectCnt, 0, True)) + " mapunit polygons to the ProjectRecord feature class", 0)
 
         del rtsdDB, rtsdDir, bRest, sMUKEYS, mukeyField, sQuery, spatialRef, regionValues
 
@@ -485,7 +485,7 @@ try:
                         newLayer = arcpy.mapping.Layer(lyr)
                         arcpy.mapping.AddLayer(df, newLayer, "TOP")
                     except:
-                        AddMsgAndPrint(project + ".lyr file was created for reference",0)
+                        AddMsgAndPrint("\n" + project + ".lyr file was created for reference",0)
 
         AddMsgAndPrint(" \n",0)
 
