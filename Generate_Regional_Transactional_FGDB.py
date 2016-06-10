@@ -493,13 +493,15 @@ def createTopology(RTSD_FD):
         arcpy.AddRuleToTopology_management(newTopology, "Must Be Single Part (Line)", "FEATLINE")
         arcpy.AddRuleToTopology_management(newTopology, "Must Be Disjoint (Point)", "FEATPOINT")
         arcpy.AddRuleToTopology_management(newTopology, "Must Be Disjoint (Point)", "MUPOINT")
+        arcpy.AddRuleToTopology_management(newTopology, "Must Be Properly Inside (Point)", "MUPOLYGON")
         arcpy.AddRuleToTopology_management(newTopology, "Must Not Overlap (Line)", "MULINE")
         arcpy.AddRuleToTopology_management(newTopology, "Must Not Intersect (Line)", "MULINE")
         arcpy.AddRuleToTopology_management(newTopology, "Must Not Self-Overlap (Line)", "MULINE")
         arcpy.AddRuleToTopology_management(newTopology, "Must Not Have Pseudo-Nodes (Line)", "MULINE")
         arcpy.AddRuleToTopology_management(newTopology, "Must Not Self-Intersect (Line)", "MULINE")
         arcpy.AddRuleToTopology_management(newTopology, "Must Be Single Part (Line)", "MULINE")
-        AddMsgAndPrint(" \tAdded 16 rules to the Topology",0)
+
+        AddMsgAndPrint(" \tAdded 17 rules to the Topology",0)
         arcpy.SetProgressorPosition()
         arcpy.ResetProgressor()
 
