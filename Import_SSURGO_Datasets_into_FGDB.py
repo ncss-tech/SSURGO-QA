@@ -465,7 +465,7 @@ def importTabularData(tabularFolder, tblAliases):
 
                             if field.type != "OID":
                                 nameOfFields.append(field.name)
-                                if field.type.lower() == "String":
+                                if field.type.lower() == "string":
                                     fldLengths.append(field.length)
                                 else:
                                     fldLengths.append(0)
