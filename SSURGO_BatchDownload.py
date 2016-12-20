@@ -66,6 +66,7 @@
 # 2015-10-20 Changed tabular import to truncate any values that exceed the field length (MUNAME Problem)
 # ID604, ID670, WA651
 #
+# 2016-12-16 Converted the SOAP request to POST-REST request to SDaccess.  A.D.
 ## ===================================================================================
 class MyError(Exception):
     pass
@@ -178,53 +179,68 @@ def GetPublicationDate(areaSym):
         #sQuery = "SELECT CONVERT(varchar(10), [SAVEREST], 126) AS SAVEREST FROM SACATALOG WHERE AREASYMBOL = '" + areaSym + "'"
         sQuery = "SELECT CONVERT(varchar(10), [SAVEREST], 126) AS SAVEREST FROM SASTATUSMAP WHERE AREASYMBOL = '" + areaSym + "' AND SAPUBSTATUSCODE = 2"
 
-        # Send XML query to SDM Access service
-        #
-        sXML = """<?xml version="1.0" encoding="utf-8"?>
-    <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-      <soap12:Body>
-        <RunQuery xmlns="http://SDMDataAccess.nrcs.usda.gov/Tabular/SDMTabularService.asmx">
-          <Query>""" + sQuery + """</Query>
-        </RunQuery>
-      </soap12:Body>
-    </soap12:Envelope>"""  # Original version SDA
+        # Create request using JSON, return data as JSON
+        dRequest = dict()
+        dRequest["FORMAT"] = "JSON"
+        dRequest["QUERY"] = sQuery
+        jData = json.dumps(dRequest)  # {"QUERY": "SELECT AREASYMBOL, AREANAME, CONVERT(varchar(10), [SAVEREST], 126) AS SAVEREST FROM SASTATUSMAP WHERE AREASYMBOL LIKE \'WI025\' ORDER BY AREASYMBOL", "FORMAT": "JSON"}
 
-        dHeaders = dict()
-        dHeaders["Host"] = "sdmdataaccess.nrcs.usda.gov"  # Original SDA version
-        dHeaders["Content-Type"] = "text/xml; charset=utf-8"
-        dHeaders["SOAPAction"] = "http://SDMDataAccess.nrcs.usda.gov/Tabular/SDMTabularService.asmx/RunQuery"          # Original version SDA"  # Test version SDA
-        dHeaders["Content-Length"] = len(sXML)
-        sURL = "SDMDataAccess.nrcs.usda.gov"  # original SDA
+        # Send request to SDA Tabular service using urllib2 library
+        req = urllib2.Request(url, jData)
+        resp = urllib2.urlopen(req)
+        jsonString = resp.read()      # {"Table":[["WI025","Dane County, Wisconsin","2016-09-27"]]}
 
-        # Create SDM connection to service using HTTP
-        conn = httplib.HTTPConnection(sURL, 80)
+        # Convert the returned JSON string into a Python dictionary.
+        data = json.loads(jsonString)  # {u'Table': [[u'WI025', u'Dane County, Wisconsin', u'2016-09-27']]}
 
-        # Send request in XML-Soap
-        conn.request("POST", "/Tabular/SDMTabularService.asmx", sXML, dHeaders)
+        return data['Table'][0][0]
 
-        # Get back XML response
-        response = conn.getresponse()
-        xmlString = response.read()
-
-        # Close connection to SDM
-        conn.close()
-
-        # Convert XML to tree format
-        tree = ET.fromstring(xmlString)
-
-        iCnt = 0
-        # Create empty value list
-        valList = list()
-
-        # Iterate through XML tree, finding required elements...
-        for rec in tree.iter():
-
-            if rec.tag == "SAVEREST":
-                # get the YYYYMMDD part of the datetime string
-                # then reformat to match SQL query
-                sdmDate = str(rec.text).split(" ")[0]
-
-        return sdmDate
+        """ ------------------------------------------- This is the original SOAP request; being replaced by POST-REST request --------------------------------------"""
+##        # Send XML query to SDM Access service
+##        #
+##        sXML = """<?xml version="1.0" encoding="utf-8"?>
+##    <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+##      <soap12:Body>
+##        <RunQuery xmlns="http://SDMDataAccess.nrcs.usda.gov/Tabular/SDMTabularService.asmx">
+##          <Query>""" + sQuery + """</Query>
+##        </RunQuery>
+##      </soap12:Body>
+##    </soap12:Envelope>"""  # Original version SDA
+##
+##        dHeaders = dict()
+##        dHeaders["Host"] = "sdmdataaccess.nrcs.usda.gov"  # Original SDA version
+##        dHeaders["Content-Type"] = "text/xml; charset=utf-8"
+##        dHeaders["SOAPAction"] = "http://SDMDataAccess.nrcs.usda.gov/Tabular/SDMTabularService.asmx/RunQuery"          # Original version SDA"  # Test version SDA
+##        dHeaders["Content-Length"] = len(sXML)
+##        sURL = "SDMDataAccess.nrcs.usda.gov"  # original SDA
+##
+##        # Create SDM connection to service using HTTP
+##        conn = httplib.HTTPConnection(sURL, 80)
+##
+##        # Send request in XML-Soap
+##        conn.request("POST", "/Tabular/SDMTabularService.asmx", sXML, dHeaders)
+##
+##        # Get back XML response
+##        response = conn.getresponse()
+##        xmlString = response.read()
+##
+##        # Close connection to SDM
+##        conn.close()
+##
+##        # Convert XML to tree format
+##        tree = ET.fromstring(xmlString)
+##
+##        iCnt = 0
+##        # Create empty value list
+##        valList = list()
+##
+##        # Iterate through XML tree, finding required elements...
+##        for rec in tree.iter():
+##
+##            if rec.tag == "SAVEREST":
+##                # get the YYYYMMDD part of the datetime string
+##                # then reformat to match SQL query
+##                sdmDate = str(rec.text).split(" ")[0]
 
     except:
         errorMsg()
@@ -393,7 +409,7 @@ def GetDownload(areasym, surveyDate, importDB):
     # automatic tabular imports.
 
     # create URL string from survey string and WSS 3.0 cache URL
-    baseURL = "http://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/"
+    baseURL = "https://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/"
 
     try:
         # List of states that use a Template database other than US_2003.

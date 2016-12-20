@@ -18,6 +18,7 @@
 # 01-09-2014
 # Steve Peaslee and Adolfo Diaz
 #
+# Updated: 2016-12-16 Converted the SOAP request to POST-REST request to SDaccess. -- AD
 ## ===================================================================================
 class MyError(Exception):
     pass
@@ -108,7 +109,6 @@ def getRegionalAreaSymbolList(ssaTable, masterTable, userRegionChoice):
 def getSDMaccessDict(areaSymbol):
 
     import httplib
-    import xml.etree.cElementTree as ET
 
     try:
 
@@ -118,94 +118,121 @@ def getSDMaccessDict(areaSymbol):
         #sQuery = "SELECT AREASYMBOL, AREANAME, CONVERT(varchar(10), [SAVEREST], 126) AS SAVEREST FROM SASTATUSMAP WHERE AREASYMBOL LIKE '" + areaSymbol + "' AND SAPUBSTATUSCODE = 2 ORDER BY AREASYMBOL"
         sQuery = "SELECT AREASYMBOL, AREANAME, CONVERT(varchar(10), [SAVEREST], 126) AS SAVEREST FROM SASTATUSMAP WHERE AREASYMBOL LIKE '" + areaSymbol + "' ORDER BY AREASYMBOL"
 
-        # This RunQuery runs your own custom SQL or SQL Data Shaping query against the Soil Data Mart database and returns an XML
-        # data set containing the results. If an error occurs, an exception will be thrown.
-        sXML = """<?xml version="1.0" encoding="utf-8"?>
-        <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-          <soap12:Body>
-            <RunQuery xmlns="http://SDMDataAccess.nrcs.usda.gov/Tabular/SDMTabularService.asmx">
-              <Query>""" + sQuery + """</Query>
-            </RunQuery>
-          </soap12:Body>
-        </soap12:Envelope>"""
+        theURL = "https://sdmdataaccess.nrcs.usda.gov"
+        url = theURL + "/Tabular/SDMTabularService/post.rest"
 
-        dHeaders = dict()
-        dHeaders["Host"] = "sdmdataaccess.nrcs.usda.gov"
-        #dHeaders["User-Agent"] = "NuSOAP/0.7.3 (1.114)"
-        #dHeaders["Content-Type"] = "application/soap+xml; charset=utf-8"
-        dHeaders["Content-Type"] = "text/xml; charset=utf-8"
-        dHeaders["Content-Length"] = len(sXML)
-        dHeaders["SOAPAction"] = "http://SDMDataAccess.nrcs.usda.gov/Tabular/SDMTabularService.asmx/RunQuery"
-        sURL = "SDMDataAccess.nrcs.usda.gov"
+        # Create request using JSON, return data as JSON
+        dRequest = dict()
+        dRequest["FORMAT"] = "JSON"
+        dRequest["QUERY"] = sQuery
+        jData = json.dumps(dRequest)  # {"QUERY": "SELECT AREASYMBOL, AREANAME, CONVERT(varchar(10), [SAVEREST], 126) AS SAVEREST FROM SASTATUSMAP WHERE AREASYMBOL LIKE \'WI025\' ORDER BY AREASYMBOL", "FORMAT": "JSON"}
 
-        try:
+        # Send request to SDA Tabular service using urllib2 library
+        req = urllib2.Request(url, jData)
+        resp = urllib2.urlopen(req)
+        jsonString = resp.read()      # {"Table":[["WI025","Dane County, Wisconsin","2016-09-27"]]}
 
-            # Create SDM connection to service using HTTP
-            conn = httplib.HTTPConnection(sURL, 80)
+        # Convert the returned JSON string into a Python dictionary.
+        data = json.loads(jsonString)  # {u'Table': [[u'WI025', u'Dane County, Wisconsin', u'2016-09-27']]}
 
-            # Send request in XML-Soap
-            conn.request("POST", "/Tabular/SDMTabularService.asmx", sXML, dHeaders)
-
-            # Get back XML response
-            response = conn.getresponse()
-            xmlString = response.read()
-
-            # Close connection to SDM
-            conn.close()
-
-        except HTTPError, e:
-            PrintMsg("\t" + areaSymbol + " encountered HTTP Error querying SDMaccess (" + str(e.code) + ")", 2)
-            sleep(i * 3)
-            return ""
-
-        except URLError, e:
-            PrintMsg("\t" + areaSymbol + " encountered URL Error querying SDMaccess: " + str(e.reason), 2)
-            sleep(i * 3)
-            return ""
-
-        except socket.timeout, e:
-            PrintMsg("\t" + areaSymbol + " encountered server timeout error querying SDMacess", 2)
-            sleep(i * 3)
-            return ""
-
-        except socket.error, e:
-            PrintMsg("\t" + areaSymbol + " encountered SDMaccess connection failure", 2)
-            sleep(i * 3)
-            return ""
-
-        except:
-            errorMsg
-            return ""
-
-        # Convert XML to tree format
-        tree = ET.fromstring(xmlString)
-
-        areasym = ""
-        areaname = ""
-        date = ""
-
-        # Iterate through XML tree, finding required elements...
-        for rec in tree.iter():
-
-            if rec.tag == "AREASYMBOL":
-                areasym = str(rec.text)
-
-            if rec.tag == "AREANAME":
-                areaname = str(rec.text)
-
-            if rec.tag == "SAVEREST":
-                # get the YYYYMMDD part of the datetime string
-                # then reformat to match SQL query
-                date = str(rec.text).split(" ")[0]
+        areasym = data['Table'][0][0]
+        areaname = data['Table'][0][1]
+        date = data['Table'][0][2]
 
         sdmAccessDict[areaSymbol] = (areasym + "|" + str(date) + "|" + areaname)
 
-        del sQuery, sXML, dHeaders, sURL, conn, response, xmlString, tree, areasym,  areaname, date
+        del sQuery,theURL,url,dRequest,jData,req,resp,jsonString,data,areasym,areaname,date
 
         return sdmAccessDict
 
+        """ ---------------------------------------------- This is the Original SOAP request to the SDMAccess; Replaced by a POST REST request -------------------------------------------------"""
+##        # This RunQuery runs your own custom SQL or SQL Data Shaping query against the Soil Data Mart database and returns an XML
+##        # data set containing the results. If an error occurs, an exception will be thrown.
+##        sXML = """<?xml version="1.0" encoding="utf-8"?>
+##        <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="https://www.w3.org/2003/05/soap-envelope">
+##          <soap12:Body>
+##            <RunQuery xmlns="http://SDMDataAccess.nrcs.usda.gov/Tabular/SDMTabularService.asmx">
+##              <Query>""" + sQuery + """</Query>
+##            </RunQuery>
+##          </soap12:Body>
+##        </soap12:Envelope>"""
+##
+##        dHeaders = dict()
+##        dHeaders["Host"] = "sdmdataaccess.nrcs.usda.gov"
+##        #dHeaders["User-Agent"] = "NuSOAP/0.7.3 (1.114)"
+##        #dHeaders["Content-Type"] = "application/soap+xml; charset=utf-8"
+##        dHeaders["Content-Type"] = "text/xml; charset=utf-8"
+##        dHeaders["Content-Length"] = len(sXML)
+##        dHeaders["SOAPAction"] = "http://SDMDataAccess.nrcs.usda.gov/Tabular/SDMTabularService.asmx/RunQuery"
+##        sURL = "SDMDataAccess.nrcs.usda.gov"
+##
+##        try:
+##
+##            # Create SDM connection to service using HTTP
+##            conn = httplib.HTTPConnection(sURL, 80)
+##
+##            # Send request in XML-Soap
+##            conn.request("POST", "/Tabular/SDMTabularService.asmx", sXML, dHeaders)
+##
+##            # Get back XML response
+##            response = conn.getresponse()
+##            xmlString = response.read()
+##
+##            # Close connection to SDM
+##            conn.close()
+##
+##        except HTTPError, e:
+##            PrintMsg("\t" + areaSymbol + " encountered HTTP Error querying SDMaccess (" + str(e.code) + ")", 2)
+##            sleep(i * 3)
+##            return ""
+##
+##        except URLError, e:
+##            PrintMsg("\t" + areaSymbol + " encountered URL Error querying SDMaccess: " + str(e.reason), 2)
+##            sleep(i * 3)
+##            return ""
+##
+##        except socket.timeout, e:
+##            PrintMsg("\t" + areaSymbol + " encountered server timeout error querying SDMacess", 2)
+##            sleep(i * 3)
+##            return ""
+##
+##        except socket.error, e:
+##            PrintMsg("\t" + areaSymbol + " encountered SDMaccess connection failure", 2)
+##            sleep(i * 3)
+##            return ""
+##
+##        except:
+##            errorMsg
+##            return ""
+##
+##        # Convert XML to tree format
+##        tree = ET.fromstring(xmlString)
+##
+##        areasym = ""
+##        areaname = ""
+##        date = ""
+##
+##        # Iterate through XML tree, finding required elements...
+##        for rec in tree.iter():
+##
+##            if rec.tag == "AREASYMBOL":
+##                areasym = str(rec.text)
+##
+##            if rec.tag == "AREANAME":
+##                areaname = str(rec.text)
+##
+##            if rec.tag == "SAVEREST":
+##                # get the YYYYMMDD part of the datetime string
+##                # then reformat to match SQL query
+##                date = str(rec.text).split(" ")[0]
+
+    except urllib2.HTTPError:
+        errorMsg()
+        PrintMsg(" \n" + sQuery, 1)
+        return ""
+
     except:
-        errorMsg
+        errorMsg()
         return ""
 
 ## ===================================================================================
@@ -221,11 +248,11 @@ def GetDownload(areasym, surveyDate):
     # UPDATED: 1/9/2014 In this version, only the most current SSURGO dataset is downloaded
     # with a SSURGO Access Template
     # example URL without Template:
-    # http://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/wss_SSA_NE001_[2012-08-10].zip
+    # https://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/wss_SSA_NE001_[2012-08-10].zip
     #
 
     # create URL string from survey string and WSS 3.0 cache URL
-    baseURL = "http://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/"
+    baseURL = "https://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/"
 
     try:
 
@@ -234,8 +261,8 @@ def GetDownload(areasym, surveyDate):
         zipName1 = "wss_SSA_" + areaSym + "_soildb_US_2003_[" + surveyDate + "].zip"  # wss_SSA_WI025_soildb_US_2003_[2012-06-26].zip
         zipName2 = "wss_SSA_" + areaSym + "_soildb_" + areaSym[0:2] + "_2003_[" + surveyDate + "].zip"  # wss_SSA_WI025_soildb_WI_2003_[2012-06-26].zip
 
-        zipURL1 = baseURL + zipName1  # http://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/wss_SSA_WI025_soildb_US_2003_[2012-06-26].zip
-        zipURL2 = baseURL + zipName2  # http://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/wss_SSA_WI025_soildb_WI_2003_[2012-06-26].zip
+        zipURL1 = baseURL + zipName1  # https://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/wss_SSA_WI025_soildb_US_2003_[2012-06-26].zip
+        zipURL2 = baseURL + zipName2  # https://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/wss_SSA_WI025_soildb_WI_2003_[2012-06-26].zip
 
         PrintMsg("\tGetting zipfile from Web Soil Survey...", 0)
 
@@ -304,7 +331,7 @@ def GetDownload(areasym, surveyDate):
         return ""
 ## =====================================  MAIN BODY    ==============================================
 # Import system modules
-import arcpy, sys, os, locale, string, traceback, shutil, zipfile, glob, socket
+import arcpy, sys, os, locale, string, traceback, shutil, zipfile, glob, socket, json,urllib2
 from urllib2 import urlopen, URLError, HTTPError
 from arcpy import env
 from time import sleep
@@ -364,7 +391,7 @@ try:
             asDict = getSDMaccessDict(SSA)
 
         # Could not get SDaccess info for this SSA - cannot continue
-        if len(asDict) <1:
+        if len(asDict) < 1:
             PrintMsg("\tCould not get information for " + SSA + " from SD Access",2)
             failedList.append(SSA)
             continue
