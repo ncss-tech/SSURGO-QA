@@ -267,54 +267,56 @@ def createFeatureClasses(newFGDBpath,spatialRef):
 
         AddMsgAndPrint("\tCreated Feature Class: " + soilFC + " -----> Mapunit Polygon Layer" ,0)
 
-        #------------------------------------------------- Create a blank feature class to append SSA boundary to
-        arcpy.CreateFeatureclass_management(newFGDBpath,soilSaFC,"polygon","","DISABLED","DISABLED",spatialRef)
+        if not bSTATSGO:
 
-        arcpy.AddField_management(newFGDBpath + os.sep + soilSaFC,"AREASYMBOL","TEXT","#","#","20")
-        arcpy.AddField_management(newFGDBpath + os.sep + soilSaFC,"SPATIALVER","DOUBLE","10","0")
-        arcpy.AddField_management(newFGDBpath + os.sep + soilSaFC,"LKEY","TEXT","#","#","30")
+            #------------------------------------------------- Create a blank feature class to append SSA boundary to
+            arcpy.CreateFeatureclass_management(newFGDBpath,soilSaFC,"polygon","","DISABLED","DISABLED",spatialRef)
 
-        AddMsgAndPrint("\tCreated Feature Class: " + soilSaFC + " -----> Survey Boundary Layer",0)
+            arcpy.AddField_management(newFGDBpath + os.sep + soilSaFC,"AREASYMBOL","TEXT","#","#","20")
+            arcpy.AddField_management(newFGDBpath + os.sep + soilSaFC,"SPATIALVER","DOUBLE","10","0")
+            arcpy.AddField_management(newFGDBpath + os.sep + soilSaFC,"LKEY","TEXT","#","#","30")
 
-        #------------------------------------------------- Create a blank feature class to append SSURGO point features to
-        arcpy.CreateFeatureclass_management(newFGDBpath,featPointFC,"point","","DISABLED","DISABLED",spatialRef)
+            AddMsgAndPrint("\tCreated Feature Class: " + soilSaFC + " -----> Survey Boundary Layer",0)
 
-        arcpy.AddField_management(newFGDBpath + os.sep + featPointFC,"AREASYMBOL","TEXT","#","#","20")
-        arcpy.AddField_management(newFGDBpath + os.sep + featPointFC,"SPATIALVER","DOUBLE","10","0")
-        arcpy.AddField_management(newFGDBpath + os.sep + featPointFC,"FEATSYM","TEXT","#","#","3")
-        arcpy.AddField_management(newFGDBpath + os.sep + featPointFC,"FEATKEY","TEXT","#","#","30")
+            #------------------------------------------------- Create a blank feature class to append SSURGO point features to
+            arcpy.CreateFeatureclass_management(newFGDBpath,featPointFC,"point","","DISABLED","DISABLED",spatialRef)
 
-        AddMsgAndPrint("\tCreated Feature Class: " + featPointFC + " -----> Special Feature Point Layer",0)
+            arcpy.AddField_management(newFGDBpath + os.sep + featPointFC,"AREASYMBOL","TEXT","#","#","20")
+            arcpy.AddField_management(newFGDBpath + os.sep + featPointFC,"SPATIALVER","DOUBLE","10","0")
+            arcpy.AddField_management(newFGDBpath + os.sep + featPointFC,"FEATSYM","TEXT","#","#","3")
+            arcpy.AddField_management(newFGDBpath + os.sep + featPointFC,"FEATKEY","TEXT","#","#","30")
 
-        #------------------------------------------------- Create a blank feature class to append SSURGO line features to
-        arcpy.CreateFeatureclass_management(newFGDBpath,featLineFC,"polyline","","DISABLED","DISABLED",spatialRef)
+            AddMsgAndPrint("\tCreated Feature Class: " + featPointFC + " -----> Special Feature Point Layer",0)
 
-        arcpy.AddField_management(newFGDBpath + os.sep + featLineFC,"AREASYMBOL","TEXT","#","#","20")
-        arcpy.AddField_management(newFGDBpath + os.sep + featLineFC,"SPATIALVER","DOUBLE","10","0")
-        arcpy.AddField_management(newFGDBpath + os.sep + featLineFC,"FEATSYM","TEXT","#","#","3")
-        arcpy.AddField_management(newFGDBpath + os.sep + featLineFC,"FEATKEY","TEXT","#","#","30")
+            #------------------------------------------------- Create a blank feature class to append SSURGO line features to
+            arcpy.CreateFeatureclass_management(newFGDBpath,featLineFC,"polyline","","DISABLED","DISABLED",spatialRef)
 
-        AddMsgAndPrint("\tCreated Feature Class: " + featLineFC + "  -----> Special Feature Line Layer",0)
+            arcpy.AddField_management(newFGDBpath + os.sep + featLineFC,"AREASYMBOL","TEXT","#","#","20")
+            arcpy.AddField_management(newFGDBpath + os.sep + featLineFC,"SPATIALVER","DOUBLE","10","0")
+            arcpy.AddField_management(newFGDBpath + os.sep + featLineFC,"FEATSYM","TEXT","#","#","3")
+            arcpy.AddField_management(newFGDBpath + os.sep + featLineFC,"FEATKEY","TEXT","#","#","30")
 
-        #------------------------------------------------- Create a blank feature class to append SSURGO Mapunit line features to
-        arcpy.CreateFeatureclass_management(newFGDBpath,muLineFC,"polyline","","DISABLED","DISABLED",spatialRef)
+            AddMsgAndPrint("\tCreated Feature Class: " + featLineFC + "  -----> Special Feature Line Layer",0)
 
-        arcpy.AddField_management(newFGDBpath + os.sep + muLineFC,"AREASYMBOL","TEXT","#","#","20")
-        arcpy.AddField_management(newFGDBpath + os.sep + muLineFC,"SPATIALVER","DOUBLE","10","0")
-        arcpy.AddField_management(newFGDBpath + os.sep + muLineFC,"MUSYM","TEXT","#","#","6")
-        arcpy.AddField_management(newFGDBpath + os.sep + muLineFC,"MUKEY","TEXT","#","#","30")
+            #------------------------------------------------- Create a blank feature class to append SSURGO Mapunit line features to
+            arcpy.CreateFeatureclass_management(newFGDBpath,muLineFC,"polyline","","DISABLED","DISABLED",spatialRef)
 
-        AddMsgAndPrint("\tCreated Feature Class: " + muLineFC + "    -----> Mapunit Line Layer",0)
+            arcpy.AddField_management(newFGDBpath + os.sep + muLineFC,"AREASYMBOL","TEXT","#","#","20")
+            arcpy.AddField_management(newFGDBpath + os.sep + muLineFC,"SPATIALVER","DOUBLE","10","0")
+            arcpy.AddField_management(newFGDBpath + os.sep + muLineFC,"MUSYM","TEXT","#","#","6")
+            arcpy.AddField_management(newFGDBpath + os.sep + muLineFC,"MUKEY","TEXT","#","#","30")
 
-        #------------------------------------------------- Create a blank feature class to append SSURGO Mapunit point features to
-        arcpy.CreateFeatureclass_management(newFGDBpath,muPointFC,"point","","DISABLED","DISABLED",spatialRef)
+            AddMsgAndPrint("\tCreated Feature Class: " + muLineFC + "    -----> Mapunit Line Layer",0)
 
-        arcpy.AddField_management(newFGDBpath + os.sep + muPointFC,"AREASYMBOL","TEXT","#","#","20")
-        arcpy.AddField_management(newFGDBpath + os.sep + muPointFC,"SPATIALVER","DOUBLE","10","0")
-        arcpy.AddField_management(newFGDBpath + os.sep + muPointFC,"MUSYM","TEXT","#","#","6")
-        arcpy.AddField_management(newFGDBpath + os.sep + muPointFC,"MUKEY","TEXT","#","#","30")
+            #------------------------------------------------- Create a blank feature class to append SSURGO Mapunit point features to
+            arcpy.CreateFeatureclass_management(newFGDBpath,muPointFC,"point","","DISABLED","DISABLED",spatialRef)
 
-        AddMsgAndPrint("\tCreated Feature Class: " + muPointFC + "   -----> Mapunit Point Layer",0)
+            arcpy.AddField_management(newFGDBpath + os.sep + muPointFC,"AREASYMBOL","TEXT","#","#","20")
+            arcpy.AddField_management(newFGDBpath + os.sep + muPointFC,"SPATIALVER","DOUBLE","10","0")
+            arcpy.AddField_management(newFGDBpath + os.sep + muPointFC,"MUSYM","TEXT","#","#","6")
+            arcpy.AddField_management(newFGDBpath + os.sep + muPointFC,"MUKEY","TEXT","#","#","30")
+
+            AddMsgAndPrint("\tCreated Feature Class: " + muPointFC + "   -----> Mapunit Point Layer",0)
 
         return True
 
@@ -867,6 +869,10 @@ b_importTabularData = arcpy.GetParameter(4)
 #spatialRef = r'C:\Users\adolfo.diaz\AppData\Roaming\ESRI\Desktop10.1\ArcMap\Coordinate Systems\USA_Contiguous_Albers_Equal_Area_Conic_USGS_version.prj'
 spatialRef = arcpy.GetParameterAsText(5)
 
+# Parameter # 7 - Boolean indicating that STATSGO data will be appended
+bSTATSGO = arcpy.GetParameter(6)
+#bSTATSGO = True
+
 # SSURGO FGDB template that contains empty SSURGO Tables and relationships
 # and will be copied over to the output location
 ssurgoTemplate = os.path.dirname(sys.argv[0]) + os.sep + "SSURGO_Table_Template.gdb"
@@ -969,8 +975,12 @@ try:
 
     for subFolder in surveyList:
 
+        # folder is STATSGO 'wss_gmsoil_IA_[2006-07-06]'
+        if subFolder.find("wss_gsmsoil_") > -1:
+            SSA = subFolder[12:14].lower()
+
         # folder is named in WSS 3.0 format i.e. 'wss_SSA_WI063_soildb_WI_2003_[2012-06-27]'
-        if subFolder.find("SSA_") > -1:
+        elif subFolder.find("SSA_") > -1:
             SSA = subFolder[subFolder.find("SSA_") + 4:subFolder.find("soildb")-1].lower()
 
         # folder is named according to traditional SDM format i.e. 'soil_wa001'
@@ -988,12 +998,17 @@ try:
         arcpy.SetProgressorLabel("Validating " + SSA)
 
         # Paths to individual SSURGO layers
-        soilShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "soilmu_a_" + SSA + ".shp")
-        muLineShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "soilmu_l_" + SSA + ".shp")
-        muPointShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "soilmu_p_" + SSA + ".shp")
-        soilSaShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "soilsa_a_" + SSA + ".shp")
-        featPointShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "soilsf_p_" + SSA + ".shp")
-        featLineShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "soilsf_l_" + SSA + ".shp")
+        if bSTATSGO:
+            shpPrefix = "gsmsoilmu_a_"
+        else:
+            shpPrefix = "soilmu_a_"
+
+        soilShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), shpPrefix + SSA + ".shp")
+        muLineShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), shpPrefix + SSA + ".shp")
+        muPointShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), shpPrefix + SSA + ".shp")
+        soilSaShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), shpPrefix + SSA + ".shp")
+        featPointShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), shpPrefix + SSA + ".shp")
+        featLineShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), shpPrefix + SSA + ".shp")
 
         if arcpy.Exists(soilShpPath):
 
@@ -1046,17 +1061,18 @@ try:
             soilShpList.append(soilShpDict[surveyCenter])
             soilSaShpList.append(soilSaShpDict[surveyCenter])
 
-            if int(arcpy.GetCount_management(muLineShpDict[surveyCenter]).getOutput(0)) > 0:
-                muLineShpList.append(muLineShpDict[surveyCenter])
+            if not bSTATSGO:
+                if int(arcpy.GetCount_management(muLineShpDict[surveyCenter]).getOutput(0)) > 0:
+                    muLineShpList.append(muLineShpDict[surveyCenter])
 
-            if int(arcpy.GetCount_management(muPointShpDict[surveyCenter]).getOutput(0)) > 0:
-                muPointShpList.append(muPointShpDict[surveyCenter])
+                if int(arcpy.GetCount_management(muPointShpDict[surveyCenter]).getOutput(0)) > 0:
+                    muPointShpList.append(muPointShpDict[surveyCenter])
 
-            if int(arcpy.GetCount_management(featPointShpDict[surveyCenter]).getOutput(0)) > 0:
-                featPointShpList.append(featPointShpDict[surveyCenter])
+                if int(arcpy.GetCount_management(featPointShpDict[surveyCenter]).getOutput(0)) > 0:
+                    featPointShpList.append(featPointShpDict[surveyCenter])
 
-            if int(arcpy.GetCount_management(featLineShpDict[surveyCenter]).getOutput(0)) > 0:
-                featLineShpList.append(featLineShpDict[surveyCenter])
+                if int(arcpy.GetCount_management(featLineShpDict[surveyCenter]).getOutput(0)) > 0:
+                    featLineShpList.append(featLineShpDict[surveyCenter])
 
     # No surveys to merge
     else:
@@ -1066,7 +1082,10 @@ try:
         raise MyError, "\n\n No Soil Surveys found to merge.....Exiting!"
 
     # set progressor object which allows progress information to be passed for every merge complete
-    arcpy.SetProgressor("step", "Beginning the merge process...", 0, 6, 1)
+    if bSTATSGO:
+        arcpy.SetProgressor("step", "Beginning the merge process...", 0, 1, 1)
+    else:
+        arcpy.SetProgressor("step", "Beginning the merge process...", 0, 6, 1)
 
     # --------------------------------------------------------------------------Merge Soil Mapunit Polygons
     arcpy.SetProgressorLabel("Merging " + str(len(soilShpList)) + " SSURGO Soil Mapunit Polygon Layers")
@@ -1077,70 +1096,75 @@ try:
     arcpy.SetProgressorPosition()
 
     # --------------------------------------------------------------------------Merge Soil Mapunit Lines
-    if len(muLineShpList) > 0:
+    if not bSTATSGO:
+        if len(muLineShpList) > 0:
 
-        arcpy.SetProgressorLabel("Merging " + str(len(muLineShpList)) + " SSURGO Soil Mapunit Line Layers")
+            arcpy.SetProgressorLabel("Merging " + str(len(muLineShpList)) + " SSURGO Soil Mapunit Line Layers")
 
-        arcpy.Merge_management(muLineShpList, os.path.join(FGDBpath, muLineFC))
-        #arcpy.Append_management(muLineShpList, os.path.join(FGDBpath, muLineFC), "NO_TEST")
+            arcpy.Merge_management(muLineShpList, os.path.join(FGDBpath, muLineFC))
+            #arcpy.Append_management(muLineShpList, os.path.join(FGDBpath, muLineFC), "NO_TEST")
 
-        AddMsgAndPrint("Successfully merged SSURGO Soil Mapunit Lines",0)
+            AddMsgAndPrint("Successfully merged SSURGO Soil Mapunit Lines",0)
 
-    else:
-        AddMsgAndPrint("No SSURGO Soil Mapunit Lines to merge",0)
+        else:
+            AddMsgAndPrint("No SSURGO Soil Mapunit Lines to merge",0)
 
-    arcpy.SetProgressorPosition()
+        arcpy.SetProgressorPosition()
 
     # --------------------------------------------------------------------------Merge Soil Mapunit Points
-    if len(muPointShpList) > 0:
+    if not bSTATSGO:
+        if len(muPointShpList) > 0:
 
-        arcpy.SetProgressorLabel("Merging " + str(len(muPointShpList)) + " SSURGO Soil Mapunit Point Layers")
+            arcpy.SetProgressorLabel("Merging " + str(len(muPointShpList)) + " SSURGO Soil Mapunit Point Layers")
 
-        arcpy.Merge_management(muPointShpList, os.path.join(FGDBpath, muPointFC))
-        #arcpy.Append_management(muPointShpList, os.path.join(FGDBpath, muPointFC), "NO_TEST", muPointFM)
+            arcpy.Merge_management(muPointShpList, os.path.join(FGDBpath, muPointFC))
+            #arcpy.Append_management(muPointShpList, os.path.join(FGDBpath, muPointFC), "NO_TEST", muPointFM)
 
-        AddMsgAndPrint("Successfully merged SSURGO Soil Mapunit Points",0)
+            AddMsgAndPrint("Successfully merged SSURGO Soil Mapunit Points",0)
 
-    else:
-        AddMsgAndPrint("No SSURGO Soil Mapunit Points to merge",0)
+        else:
+            AddMsgAndPrint("No SSURGO Soil Mapunit Points to merge",0)
 
-    arcpy.SetProgressorPosition()
+        arcpy.SetProgressorPosition()
 
     # --------------------------------------------------------------------------Merge Soil Survey Area
-    arcpy.SetProgressorLabel("Merging " + str(len(soilSaShpList)) + " SSURGO Soil Survey Area Layers")
+    if not bSTATSGO:
+        arcpy.SetProgressorLabel("Merging " + str(len(soilSaShpList)) + " SSURGO Soil Survey Area Layers")
 
-    arcpy.Merge_management(soilSaShpList, os.path.join(FGDBpath, soilSaFC))
+        arcpy.Merge_management(soilSaShpList, os.path.join(FGDBpath, soilSaFC))
 
-    AddMsgAndPrint("Successfully merged SSURGO Soil Survey Area Polygons",0)
-    arcpy.SetProgressorPosition()
+        AddMsgAndPrint("Successfully merged SSURGO Soil Survey Area Polygons",0)
+        arcpy.SetProgressorPosition()
 
     # --------------------------------------------------------------------------Merge Special Point Features
-    if len(featPointShpList) > 0:
+    if not bSTATSGO:
+        if len(featPointShpList) > 0:
 
-        arcpy.SetProgressorLabel("Merging " + str(len(featPointShpList)) + " SSURGO Special Point Feature Layers")
+            arcpy.SetProgressorLabel("Merging " + str(len(featPointShpList)) + " SSURGO Special Point Feature Layers")
 
-        arcpy.Merge_management(featPointShpList, os.path.join(FGDBpath, featPointFC))
+            arcpy.Merge_management(featPointShpList, os.path.join(FGDBpath, featPointFC))
 
-        AddMsgAndPrint("Successfully merged SSURGO Special Point Features",0)
+            AddMsgAndPrint("Successfully merged SSURGO Special Point Features",0)
 
-    else:
-        AddMsgAndPrint("No SSURGO Soil Special Point Features to merge",0)
+        else:
+            AddMsgAndPrint("No SSURGO Soil Special Point Features to merge",0)
 
-    arcpy.SetProgressorPosition()
+        arcpy.SetProgressorPosition()
 
     # --------------------------------------------------------------------------Merge Special Line Features
-    if len(featLineShpList) > 0:
+    if not bSTATSGO:
+        if len(featLineShpList) > 0:
 
-        arcpy.SetProgressorLabel("Merging " + str(len(featLineShpList)) + " SSURGO Special Line Feature Layers")
+            arcpy.SetProgressorLabel("Merging " + str(len(featLineShpList)) + " SSURGO Special Line Feature Layers")
 
-        arcpy.Merge_management(featLineShpList, os.path.join(FGDBpath, featLineFC))
+            arcpy.Merge_management(featLineShpList, os.path.join(FGDBpath, featLineFC))
 
-        AddMsgAndPrint("Successfully merged SSURGO Special Line Features",0)
+            AddMsgAndPrint("Successfully merged SSURGO Special Line Features",0)
 
-    else:
-        AddMsgAndPrint("No SSURGO Special Line Features to merge",0)
+        else:
+            AddMsgAndPrint("No SSURGO Special Line Features to merge",0)
 
-    arcpy.SetProgressorPosition()
+        arcpy.SetProgressorPosition()
 
     # Strictly Formatting
     AddMsgAndPrint("\n*******************************************************************************************************",1)
@@ -1156,7 +1180,10 @@ try:
 
             if os.path.exists(tabularFolder):
 
-                SSA = os.path.basename(survey)[9:14].upper()
+                if bSTATSGO:
+                    SSA = os.path.basename(survey)[12:14].upper()
+                else:
+                    SSA = os.path.basename(survey)[9:14].upper()
 
                 # Formatting purposes
                 if i == 0:
@@ -1173,12 +1200,16 @@ try:
                     shutil.copy2(specFeatDescFile, tabularFolder + os.sep + "featdesc.txt")
 
                 # The next 6 lines will report the # of SSURGO features in each SSA dataset
-                AddMsgAndPrint("\tImported " + os.path.basename(survey)[:-4] + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(survey).getOutput(0)))),0)
-                AddMsgAndPrint("\tImported soilmu_l_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilmu_l_" + SSA +".shp")).getOutput(0)))),0)
-                AddMsgAndPrint("\tImported soilmu_p_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilmu_p_" + SSA +".shp")).getOutput(0)))),0)
-                AddMsgAndPrint("\tImported soilsa_a_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilsa_a_" + SSA +".shp")).getOutput(0)))),0)
-                AddMsgAndPrint("\tImported soilsf_p_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilsf_p_" + SSA +".shp")).getOutput(0)))),0)
-                AddMsgAndPrint("\tImported soilsf_l_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilsf_l_" + SSA +".shp")).getOutput(0)))),0)
+                if bSTATSGO:
+                    AddMsgAndPrint("\tImported " + os.path.basename(survey)[:-4] + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(survey).getOutput(0)))),0)
+
+                else:
+                    AddMsgAndPrint("\tImported " + os.path.basename(survey)[:-4] + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(survey).getOutput(0)))),0)
+                    AddMsgAndPrint("\tImported soilmu_l_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilmu_l_" + SSA +".shp")).getOutput(0)))),0)
+                    AddMsgAndPrint("\tImported soilmu_p_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilmu_p_" + SSA +".shp")).getOutput(0)))),0)
+                    AddMsgAndPrint("\tImported soilsa_a_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilsa_a_" + SSA +".shp")).getOutput(0)))),0)
+                    AddMsgAndPrint("\tImported soilsf_p_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilsf_p_" + SSA +".shp")).getOutput(0)))),0)
+                    AddMsgAndPrint("\tImported soilsf_l_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilsf_l_" + SSA +".shp")).getOutput(0)))),0)
 
                 importFailed = 0
 
@@ -1225,18 +1256,24 @@ try:
         i = 0
         for survey in soilSaShpList:
 
-            SSA = os.path.basename(survey)[9:14].lower()
+            if bSTATSGO:
+                SSA = os.path.basename(survey)[12:14].lower()
+            else:
+                SSA = os.path.basename(survey)[9:14].lower()
+
             spatialFolder = os.path.dirname(survey)
 
             AddMsgAndPrint("\nMerge Results: " + SSA.upper(),1)
 
             # The next 6 lines will report the # of SSURGO features in each SSA dataset
             AddMsgAndPrint("\tImported " + os.path.basename(survey)[:-4] + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(survey).getOutput(0)))),0)
-            AddMsgAndPrint("\tImported soilmu_l_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilmu_l_" + SSA +".shp")).getOutput(0)))),0)
-            AddMsgAndPrint("\tImported soilmu_p_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilmu_p_" + SSA +".shp")).getOutput(0)))),0)
-            AddMsgAndPrint("\tImported soilsa_a_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilsa_a_" + SSA +".shp")).getOutput(0)))),0)
-            AddMsgAndPrint("\tImported soilsf_p_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilsf_p_" + SSA +".shp")).getOutput(0)))),0)
-            AddMsgAndPrint("\tImported soilsf_l_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilsf_l_" + SSA +".shp")).getOutput(0)))),0)
+
+            if not bSTATSGO:
+                AddMsgAndPrint("\tImported soilmu_l_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilmu_l_" + SSA +".shp")).getOutput(0)))),0)
+                AddMsgAndPrint("\tImported soilmu_p_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilmu_p_" + SSA +".shp")).getOutput(0)))),0)
+                AddMsgAndPrint("\tImported soilsa_a_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilsa_a_" + SSA +".shp")).getOutput(0)))),0)
+                AddMsgAndPrint("\tImported soilsf_p_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilsf_p_" + SSA +".shp")).getOutput(0)))),0)
+                AddMsgAndPrint("\tImported soilsf_l_" + SSA + ".....# of Features: " + str(splitThousands(int(arcpy.GetCount_management(os.path.join(spatialFolder,"soilsf_l_" + SSA +".shp")).getOutput(0)))),0)
 
             i += 1
             del SSA, spatialFolder
@@ -1254,10 +1291,12 @@ try:
     AddMsgAndPrint("\n******************************************************************************************************************",1)
     AddMsgAndPrint("Total # of SSURGO Datasets Appended: " + str(splitThousands(len(soilShpList))),1)
     AddMsgAndPrint("\tTotal # of Mapunit Polygons: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + soilFC).getOutput(0))),1)
-    AddMsgAndPrint("\tTotal # of Mapunit Lines: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + muLineFC).getOutput(0))),1)
-    AddMsgAndPrint("\tTotal # of Mapunit Points: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + muPointFC).getOutput(0))),1)
-    AddMsgAndPrint("\tTotal # of Special Feature Points: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + featPointFC).getOutput(0))),1)
-    AddMsgAndPrint("\tTotal # of Special Feature Lines: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + featLineFC).getOutput(0))),1)
+
+    if not bSTATSGO:
+        AddMsgAndPrint("\tTotal # of Mapunit Lines: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + muLineFC).getOutput(0))),1)
+        AddMsgAndPrint("\tTotal # of Mapunit Points: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + muPointFC).getOutput(0))),1)
+        AddMsgAndPrint("\tTotal # of Special Feature Points: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + featPointFC).getOutput(0))),1)
+        AddMsgAndPrint("\tTotal # of Special Feature Lines: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + featLineFC).getOutput(0))),1)
 
     arcpy.RefreshCatalog(outputFolder)
 
