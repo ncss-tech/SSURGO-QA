@@ -60,9 +60,6 @@ def CheckAreasymbols(asList):
         # select by list of Areasymbols only
         sQuery = "SELECT AREASYMBOL FROM SASTATUSMAP WHERE AREASYMBOL IN (" + str(asList)[1:-1] + ") AND SAPUBSTATUSCODE = 2 ORDER BY AREASYMBOL"
 
-        """-----------------------------------------------------------------------------------"""
-        valList = list()
-
         theURL = "https://sdmdataaccess.nrcs.usda.gov"
         url = theURL + "/Tabular/SDMTabularService/post.rest"
 
@@ -80,6 +77,7 @@ def CheckAreasymbols(asList):
         # Convert the returned JSON string into a Python dictionary.
         data = json.loads(jsonString)  # {u'Table': [[u'WI025', u'Dane County, Wisconsin', u'2016-09-27']]}
 
+        valList = list()
         valList.append(data['Table'][0][0])
 
 
