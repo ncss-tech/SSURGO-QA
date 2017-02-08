@@ -53,56 +53,80 @@ def CheckAreasymbols(asList):
     # in Web Soil Survey. These will be flagged incorrectly.
 
     try:
-        import httplib, urllib2
-        import xml.etree.cElementTree as ET
+        import httplib
+        #import xml.etree.cElementTree as ET
         # Handle choice list according to the first two parameter values
 
         # select by list of Areasymbols only
         sQuery = "SELECT AREASYMBOL FROM SASTATUSMAP WHERE AREASYMBOL IN (" + str(asList)[1:-1] + ") AND SAPUBSTATUSCODE = 2 ORDER BY AREASYMBOL"
 
-        # Send XML query to SDM Access service
-        #
-        sXML = """<?xml version="1.0" encoding="utf-8"?>
-    <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-      <soap12:Body>
-        <RunQuery xmlns="http://SDMDataAccess.nrcs.usda.gov/Tabular/SDMTabularService.asmx">
-          <Query>""" + sQuery + """</Query>
-        </RunQuery>
-      </soap12:Body>
-    </soap12:Envelope>"""
-
-        dHeaders = dict()
-        dHeaders["Host"] = "sdmdataaccess.nrcs.usda.gov"
-        #dHeaders["User-Agent"] = "NuSOAP/0.7.3 (1.114)"
-        #dHeaders["Content-Type"] = "application/soap+xml; charset=utf-8"
-        dHeaders["Content-Type"] = "text/xml; charset=utf-8"
-        dHeaders["SOAPAction"] = "http://SDMDataAccess.nrcs.usda.gov/Tabular/SDMTabularService.asmx/RunQuery"
-        dHeaders["Content-Length"] = len(sXML)
-        sURL = "SDMDataAccess.nrcs.usda.gov"
-
-        # Create SDM connection to service using HTTP
-        conn = httplib.HTTPConnection(sURL, 80)
-        # Send request in XML-Soap
-        conn.request("POST", "/Tabular/SDMTabularService.asmx", sXML, dHeaders)
-
-        # Get back XML response
-        response = conn.getresponse()
-        xmlString = response.read()
-
-        # Close connection to SDM
-        conn.close()
-
-        # Convert XML to tree format
-        tree = ET.fromstring(xmlString)
-        iCnt = 0
+        """-----------------------------------------------------------------------------------"""
         valList = list()
 
-        # Iterate through XML tree, finding required elements...
-        for rec in tree.iter():
+        theURL = "https://sdmdataaccess.nrcs.usda.gov"
+        url = theURL + "/Tabular/SDMTabularService/post.rest"
 
-            if rec.tag == "AREASYMBOL":
-                areasym = str(rec.text)
-                valList.append(areasym)
+        # Create request using JSON, return data as JSON
+        dRequest = dict()
+        dRequest["FORMAT"] = "JSON"
+        dRequest["QUERY"] = sQuery
+        jData = json.dumps(dRequest)
+
+        # Send request to SDA Tabular service using urllib2 library
+        req = urllib2.Request(url, jData)
+        resp = urllib2.urlopen(req)
+        jsonString = resp.read()      # {"Table":[["WI025","Dane County, Wisconsin","2016-09-27"]]}
+
+        # Convert the returned JSON string into a Python dictionary.
+        data = json.loads(jsonString)  # {u'Table': [[u'WI025', u'Dane County, Wisconsin', u'2016-09-27']]}
+
+        valList.append(data['Table'][0][0])
+
+
+        """ ---------------------------------------------- This is the Original SOAP request to the SDMAccess; Replaced by a POST REST request -------------------------------------------------"""
+##        # Send XML query to SDM Access service
+##        #
+##        sXML = """<?xml version="1.0" encoding="utf-8"?>
+##    <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
+##      <soap12:Body>
+##        <RunQuery xmlns="http://SDMDataAccess.nrcs.usda.gov/Tabular/SDMTabularService.asmx">
+##          <Query>""" + sQuery + """</Query>
+##        </RunQuery>
+##      </soap12:Body>
+##    </soap12:Envelope>"""
+##
+##        dHeaders = dict()
+##        dHeaders["Host"] = "sdmdataaccess.nrcs.usda.gov"
+##        #dHeaders["User-Agent"] = "NuSOAP/0.7.3 (1.114)"
+##        #dHeaders["Content-Type"] = "application/soap+xml; charset=utf-8"
+##        dHeaders["Content-Type"] = "text/xml; charset=utf-8"
+##        dHeaders["SOAPAction"] = "http://SDMDataAccess.nrcs.usda.gov/Tabular/SDMTabularService.asmx/RunQuery"
+##        dHeaders["Content-Length"] = len(sXML)
+##        sURL = "SDMDataAccess.nrcs.usda.gov"
+##
+##        # Create SDM connection to service using HTTP
+##        conn = httplib.HTTPConnection(sURL, 80)
+##        # Send request in XML-Soap
+##        conn.request("POST", "/Tabular/SDMTabularService.asmx", sXML, dHeaders)
+##
+##        # Get back XML response
+##        response = conn.getresponse()
+##        xmlString = response.read()
+##
+##        # Close connection to SDM
+##        conn.close()
+##
+##        # Convert XML to tree format
+##        tree = ET.fromstring(xmlString)
+##        iCnt = 0
+##        valList = list()
+##
+##        # Iterate through XML tree, finding required elements...
+##        for rec in tree.iter():
+##
+##            if rec.tag == "AREASYMBOL":
+##                areasym = str(rec.text)
+##                valList.append(areasym)
 
         if len(valList) > 0:
             # Got at least one match back from Soil Data Access
@@ -110,7 +134,6 @@ def CheckAreasymbols(asList):
             if len(asList) > len(valList):
                 # Incomplete match, look at each to find the problem(s)
                 PrintMsg("Areasymbols with no match in Web Soil Survey: " + ", ".join(asList), 2)
-
                 return False
 
             else:
@@ -285,7 +308,8 @@ def Number_Format(num, places=0, bCommas=True):
 
 ## ===================================================================================
 ## MAIN
-import sys, string, os, locale, time, math, operator, traceback, collections, arcpy
+import sys, string, os, locale, time, math, operator, traceback, collections, arcpy, json,urllib2
+from urllib2 import urlopen, URLError, HTTPError
 from arcpy import env
 
 try:
