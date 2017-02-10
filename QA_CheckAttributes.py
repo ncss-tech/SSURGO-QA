@@ -8,6 +8,7 @@
 # Check all spatial AREASYMBOL values to confirm that they exist in Web Soil Survey
 
 # Last Modified: 2/8/2017 to Convert the SOAP request to POST-REST request to SDaccess. -- AD
+# Only 1 Post-rest request was needed.
 
 class MyError(Exception):
     pass
