@@ -82,12 +82,17 @@ def GetMukeys(theInput):
             AddMsgAndPrint("\t\"MUKEY\" field is missing! -- Cannot get MUKEY Values.  EXITING!",2)
             sys.exit()
 
+        arcpy.SetProgressor("step", "Compiling a list of unique MUKEY values", 0, int(arcpy.GetCount_management(theInput).getOutput(0)),1)
         if featureCount:
 
             with arcpy.da.SearchCursor(theInput, [mukeyField]) as cur:
                 for rec in cur:
                     if not rec[0] in mukeyList:
                         mukeyList.append(rec[0])
+
+                    arcpy.SetProgressorPosition()
+
+            arcpy.ResetProgressor()
 
             AddMsgAndPrint("\tThere are " + splitThousands(len(mukeyList)) + " unique MUKEY values", 1)
 
@@ -157,7 +162,8 @@ def getNATMUSYM(mukeyList, featureLayer):
         mukeys = ",".join(mukeyList)
 
         # 'SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (753574,2809844,753571)'
-        sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (" + mukeys + ")"
+        ##sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (" + mukeys + ")"
+        sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from legend AS l INNER JOIN mapunit AS m ON l.lkey=m.mukey AND m.mukey in (" + mukeys + ")"
 
         # Tabular service to append to SDA URL
         theURL = "https://sdmdataaccess.nrcs.usda.gov/Tabular/SDMTabularService/post.rest"
@@ -239,6 +245,61 @@ def getNATMUSYM(mukeyList, featureLayer):
     except:
         errorMsg()
         return False
+
+## ===============================================================================================================
+def parseMukeysIntoLists(mukeyList):
+    """ This function will parse MUKEY values into manageable chunks that will be sent to the SDaccess query.
+        There is an inherent URL character limit of 2,083.  The report URL is 123 characters long which leaves 1,960 characters
+        available. I arbitrarily chose to have a max URL of 1,860 characters long to avoid problems.  Most pedonIDs are about
+        6 characters.  This would mean an average max request of 265 pedons at a time.
+
+        This function returns a list of pedon lists"""
+        #1860 = 265
+
+    try:
+        arcpy.SetProgressorLabel("Determining the number of requests to send the server")
+
+        i = 1 # Total Count
+        j = 1 # Mukey count; resets at 1000
+
+        listOfMukeyStrings = list()  # List containing pedonIDstring lists; individual lists are comprised of about 265 pedons
+        mukeyString = ""
+
+        for mukey in mukeyList:
+
+            # End of mukey list has been reached
+            if i == len(mukeyList):
+                mukeyString = mukeyString + str(mukey)
+                listOfMukeyStrings.append(mukey)
+
+            # End of mukey list NOT reached
+            else:
+                # 1000 mukeys have been reached
+                if j == 1000:
+                    mukeyString = mukeyString + str(mukey)
+                    mukeyString.append(mukeyString)
+
+                    ## reset the pedon ID string to empty
+                    mukeyString = ""
+                    j=1
+
+                # concatenate pedonID to string and continue
+                else:
+                    mukeyString = mukeyString + str(mukey) + ","
+                    i+=1;j+=1
+
+        numOfPedonStrings = len(listOfPedonStrings)  # Number of unique requests that will be sent
+        if not numOfPedonStrings:
+            AddMsgAndPrint("\n\t Something Happened here.....WTF!",2)
+            sys.exit()
+
+        else:
+            return listOfPedonStrings,numOfPedonStrings
+
+    except:
+        AddMsgAndPrint("Unhandled exception (createFGDB)", 2)
+        errorMsg()
+        sys.exit()
 
 ## ===================================================================================
 ## ====================================== Main Body ==================================
