@@ -104,7 +104,7 @@ def GetMukeys(theInput):
             AddMsgAndPrint("\n\tThere are no MUKEYS in layer. EXITING",2)
             sys.exit()
 
-        return mukeyList
+        return parseMukeysIntoLists(mukeyList)
 
     except:
         errorMsg()
@@ -146,8 +146,54 @@ def FindField(layer,chkField):
         errorMsg()
         return False
 
+## ===============================================================================================================
+def parseMukeysIntoLists(mukeyList):
+    """ This function will parse MUKEY values into manageable chunks that will be sent to the SDaccess query.
+        This function returns lists of mukey lists no larger than 1000 mukeys."""
+
+    try:
+        arcpy.SetProgressorLabel("\nDetermining the number of requests to send to SDaccess Server")
+
+        i = 0 # Total Count
+        j = 0 # Mukey count; resets at 1000
+
+        listOfMukeyStrings = list()  # List containing pedonIDstring lists; individual lists are comprised of about 265 pedons
+        tempMukeyList = list()
+
+        for mukey in mukeyList:
+            i+=1
+            j+=1
+            tempMukeyList.append(mukey)
+
+            # End of mukey list has been reached
+            if i == len(mukeyList):
+                listOfMukeyStrings.append(tempMukeyList)
+
+            # End of mukey list NOT reached
+            else:
+                # 1000 mukeys have been reached; reset tempMukeyList
+                if j == 30:
+                    listOfMukeyStrings.append(tempMukeyList)
+                    tempMukeyList = []
+                    j=0
+
+        del i,j,tempMukeyList
+
+        if not len(listOfMukeyStrings):
+            AddMsgAndPrint("\tCould not Parse MUKEY list into manageable sets",2)
+            sys.exit()
+
+        else:
+            AddMsgAndPrint("\t" + str(len(listOfMukeyStrings)) + " requests are needed to obtain NATSYM values for this layer")
+            return listOfMukeyStrings
+
+    except:
+        AddMsgAndPrint("Unhandled exception (createFGDB)", 2)
+        errorMsg()
+        sys.exit()
+
 ## ===================================================================================
-def getNATMUSYM(mukeyList, featureLayer):
+def getNATMUSYM(listsOfMUKEYs, featureLayer):
     # POST REST which uses urllib and JSON
     # Send query to SDM Tabular Service, returning data in JSON format
     # Sends a list of MUKEYS and returns a pair for each MUKEY [MUKEY,NATMUSYM]
@@ -158,36 +204,39 @@ def getNATMUSYM(mukeyList, featureLayer):
         AddMsgAndPrint("\nRequesting tabular data for " + splitThousands(len(mukeyList)) + " map units...")
         arcpy.SetProgressorLabel("Sending tabular request to Soil Data Access...")
 
-        # convert the list into a comma seperated string
-        mukeys = ",".join(mukeyList)
+        # Iterate through each MUKEY list that has been parsed for no more than 1000 mukeys
+        for mukeyList in listsOfMUKEYs:
 
-        # 'SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (753574,2809844,753571)'
-        ##sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (" + mukeys + ")"
-        sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from legend AS l INNER JOIN mapunit AS m ON l.lkey=m.mukey AND m.mukey in (" + mukeys + ")"
+            # convert the list into a comma seperated string
+            mukeys = ",".join(mukeyList)
 
-        # Tabular service to append to SDA URL
-        theURL = "https://sdmdataaccess.nrcs.usda.gov/Tabular/SDMTabularService/post.rest"
+            # 'SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (753574,2809844,753571)'
+            ##sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (" + mukeys + ")"
+            sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from legend AS l INNER JOIN mapunit AS m ON l.lkey=m.mukey AND m.mukey in (" + mukeys + ")"
 
-        # Create request using JSON, return data as JSON
-        dRequest = dict()
-        dRequest["FORMAT"] = "JSON+COLUMNNAME+METADATA"
-        dRequest["QUERY"] = sQuery
-        jData = json.dumps(dRequest)
+            # Tabular service to append to SDA URL
+            theURL = "https://sdmdataaccess.nrcs.usda.gov/Tabular/SDMTabularService/post.rest"
 
-        # Send request to SDA Tabular service using urllib2 library
-        req = urllib2.Request(theURL, jData)
-        resp = urllib2.urlopen(req)
-        jsonString = resp.read()
-        data = json.loads(jsonString)
+            # Create request using JSON, return data as JSON
+            dRequest = dict()
+            dRequest["FORMAT"] = "JSON+COLUMNNAME+METADATA"
+            dRequest["QUERY"] = sQuery
+            jData = json.dumps(dRequest)
 
-        """{u'Table': [[u'mukey', u'natmusym'],
-                    [u'ColumnOrdinal=0,ColumnSize=4,NumericPrecision=10,NumericScale=255,ProviderType=Int,IsLong=False,ProviderSpecificDataType=System.Data.SqlTypes.SqlInt32,DataTypeName=int',
-                     u'ColumnOrdinal=1,ColumnSize=6,NumericPrecision=255,NumericScale=255,ProviderType=VarChar,IsLong=False,ProviderSpecificDataType=System.Data.SqlTypes.SqlString,DataTypeName=varchar'],
-                    [u'753571', u'2tjpl'],
-                    [u'753574', u'2szdz'],
-                    [u'2809844', u'2v3f0']]}"""
+            # Send request to SDA Tabular service using urllib2 library
+            req = urllib2.Request(theURL, jData)
+            resp = urllib2.urlopen(req)
+            jsonString = resp.read()
+            data = json.loads(jsonString)
 
-        del jData,req,resp,jsonString
+            """{u'Table': [[u'mukey', u'natmusym'],
+                        [u'ColumnOrdinal=0,ColumnSize=4,NumericPrecision=10,NumericScale=255,ProviderType=Int,IsLong=False,ProviderSpecificDataType=System.Data.SqlTypes.SqlInt32,DataTypeName=int',
+                         u'ColumnOrdinal=1,ColumnSize=6,NumericPrecision=255,NumericScale=255,ProviderType=VarChar,IsLong=False,ProviderSpecificDataType=System.Data.SqlTypes.SqlString,DataTypeName=varchar'],
+                        [u'753571', u'2tjpl'],
+                        [u'753574', u'2szdz'],
+                        [u'2809844', u'2v3f0']]}"""
+
+            del jData,req,resp,jsonString
 
         # Nothing was returned from SDaccess
         if not "Table" in data:
@@ -246,78 +295,25 @@ def getNATMUSYM(mukeyList, featureLayer):
         errorMsg()
         return False
 
-## ===============================================================================================================
-def parseMukeysIntoLists(mukeyList):
-    """ This function will parse MUKEY values into manageable chunks that will be sent to the SDaccess query.
-        There is an inherent URL character limit of 2,083.  The report URL is 123 characters long which leaves 1,960 characters
-        available. I arbitrarily chose to have a max URL of 1,860 characters long to avoid problems.  Most pedonIDs are about
-        6 characters.  This would mean an average max request of 265 pedons at a time.
-
-        This function returns a list of pedon lists"""
-        #1860 = 265
-
-    try:
-        arcpy.SetProgressorLabel("Determining the number of requests to send the server")
-
-        i = 1 # Total Count
-        j = 1 # Mukey count; resets at 1000
-
-        listOfMukeyStrings = list()  # List containing pedonIDstring lists; individual lists are comprised of about 265 pedons
-        mukeyString = ""
-
-        for mukey in mukeyList:
-
-            # End of mukey list has been reached
-            if i == len(mukeyList):
-                mukeyString = mukeyString + str(mukey)
-                listOfMukeyStrings.append(mukey)
-
-            # End of mukey list NOT reached
-            else:
-                # 1000 mukeys have been reached
-                if j == 1000:
-                    mukeyString = mukeyString + str(mukey)
-                    mukeyString.append(mukeyString)
-
-                    ## reset the pedon ID string to empty
-                    mukeyString = ""
-                    j=1
-
-                # concatenate pedonID to string and continue
-                else:
-                    mukeyString = mukeyString + str(mukey) + ","
-                    i+=1;j+=1
-
-        numOfPedonStrings = len(listOfPedonStrings)  # Number of unique requests that will be sent
-        if not numOfPedonStrings:
-            AddMsgAndPrint("\n\t Something Happened here.....WTF!",2)
-            sys.exit()
-
-        else:
-            return listOfPedonStrings,numOfPedonStrings
-
-    except:
-        AddMsgAndPrint("Unhandled exception (createFGDB)", 2)
-        errorMsg()
-        sys.exit()
-
 ## ===================================================================================
 ## ====================================== Main Body ==================================
 # Import modules
 import sys, string, os, locale, arcpy, traceback, urllib2, httplib, json, re
 from arcpy import env
 
-inputFeature = arcpy.GetParameterAsText(0)
-#inputFeature = r'K:\SSURGO_FY17\2017_WSS_downloads_SSURGO_Region10\soil_wi025\spatial\soilmu_a_wi025.shp'
+if __name__ == '__main__':
 
-try:
+    inputFeature = arcpy.GetParameterAsText(0)
+    #inputFeature = r'K:\SSURGO_FY17\2017_WSS_downloads_SSURGO_Region10\soil_wi025\spatial\soilmu_a_wi025.shp'
 
-	# Get list of unique mukeys for use in tabular request
-    mukeyList = GetMukeys(inputFeature)
+    try:
 
-    # populate inputFeature with NATMUSYM
-    if not getNATMUSYM(mukeyList, inputFeature):
-        AddMsgAndPrint("\nFailed to update NATSYM field",2)
+    	# Get list of unique mukeys for use in tabular request
+        mukeyList = GetMukeys(inputFeature)
 
-except:
-    errorMsg()
+        # populate inputFeature with NATMUSYM
+        if not getNATMUSYM(mukeyList, inputFeature):
+            AddMsgAndPrint("\nFailed to update NATSYM field",2)
+
+    except:
+        errorMsg()
