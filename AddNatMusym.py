@@ -201,31 +201,84 @@ def getNATMUSYM(listsOfMUKEYs, featureLayer):
 
     try:
 
-        AddMsgAndPrint("\nRequesting tabular data for " + splitThousands(len(mukeyList)) + " map units...")
-        arcpy.SetProgressorLabel("Sending tabular request to Soil Data Access...")
+        AddMsgAndPrint("\nSubmitting individual Requests to SDMaccess")
+        arcpy.SetProgressor("step", "Sending tabular request to Soil Data Mart Access", 0, len(listsOfMUKEYs),1)
 
+        # Total Count of MUKEYs
+        iNumOfMukeys = 0
+        iRequestNum = 1
+
+        # master mukey:natmusym dictionary
+        natmusymDict = dict()
+
+        # SDMaccess URL
+        URL = "https://sdmdataaccess.nrcs.usda.gov/Tabular/SDMTabularService/post.rest"
+
+        """ ---------------------------------------- Iterate through lists of MUKEYS to submit requests for natsym ------------------------------"""
         # Iterate through each MUKEY list that has been parsed for no more than 1000 mukeys
         for mukeyList in listsOfMUKEYs:
+
+            arcpy.SetProgressorLabel("Requesting NATSYM values for " + str(len(mukeyList)) + " mukeys. Request " + str(iRequestNum) + " of " + len(listsOfMUKEYs))
+
+            iNumOfMukeys+=len(mukeyList)
+            iRequestNum+=1
 
             # convert the list into a comma seperated string
             mukeys = ",".join(mukeyList)
 
             # 'SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (753574,2809844,753571)'
-            ##sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (" + mukeys + ")"
-            sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from legend AS l INNER JOIN mapunit AS m ON l.lkey=m.mukey AND m.mukey in (" + mukeys + ")"
-
-            # Tabular service to append to SDA URL
-            theURL = "https://sdmdataaccess.nrcs.usda.gov/Tabular/SDMTabularService/post.rest"
+            sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (" + mukeys + ")"
+            #sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from legend AS l INNER JOIN mapunit AS m ON l.lkey=m.mukey AND m.mukey in (" + mukeys + ")"
 
             # Create request using JSON, return data as JSON
             dRequest = dict()
-            dRequest["FORMAT"] = "JSON+COLUMNNAME+METADATA"
+            dRequest["FORMAT"] = "JSON"
+            #dRequest["FORMAT"] = "JSON+COLUMNNAME+METADATA"
             dRequest["QUERY"] = sQuery
             jData = json.dumps(dRequest)
 
             # Send request to SDA Tabular service using urllib2 library
-            req = urllib2.Request(theURL, jData)
-            resp = urllib2.urlopen(req)
+            req = urllib2.Request(URL, jData)
+
+            """ --------------------------------------  Try connecting to SDaccess to read JSON response - You get 3 tries ------------------------"""
+            try:
+                resp = urllib2.urlopen(req)
+            except:
+                try:
+                    AddMsgAndPrint("\t2nd attempt at requesting data")
+                    resp = urllib2.urlopen(req)
+
+                except:
+                    try:
+                        AddMsgAndPrint("\t3rd attempt at requesting data")
+                        resp = urllib2.urlopen(req)
+
+                    except URLError, e:
+                        if hasattr(e, 'reason'):
+                            AddMsgAndPrint("\n\t" + URL,2)
+                            AddMsgAndPrint("\tURL Error: " + str(e.reason), 2)
+
+                        elif hasattr(e, 'code'):
+                            AddMsgAndPrint("\n\t" + URL,2)
+                            AddMsgAndPrint("\t" + e.msg + " (errorcode " + str(e.code) + ")", 2)
+
+                        return False
+
+                    except socket.timeout, e:
+                        AddMsgAndPrint("\n\t" + URL,2)
+                        AddMsgAndPrint("\tServer Timeout Error", 2)
+                        return False
+
+                    except socket.error, e:
+                        AddMsgAndPrint("\n\t" + URL)
+                        AddMsgAndPrint("\tNASIS Reports Website connection failure", 2)
+                        return False
+
+                    except httplib.BadStatusLine:
+                        AddMsgAndPrint("\n\t" + URL)
+                        AddMsgAndPrint("\tNASIS Reports Website connection failure", 2)
+                        return False
+
             jsonString = resp.read()
             data = json.loads(jsonString)
 
@@ -236,44 +289,48 @@ def getNATMUSYM(listsOfMUKEYs, featureLayer):
                         [u'753574', u'2szdz'],
                         [u'2809844', u'2v3f0']]}"""
 
-            del jData,req,resp,jsonString
+            # Nothing was returned from SDaccess
+            if not "Table" in data:
+                AddMsgAndPrint("\tWarning! NATMUSYM value were not returned for any of the MUKEY values.  Possibly OLD mukey values.",2)
+                continue
 
-        # Nothing was returned from SDaccess
-        if not "Table" in data:
-            AddMsgAndPrint("\tWarning! NATMUSYM value was not returned for any of the MUKEY values ",2)
-            return False
+            # Add the mukey:natmusym Values to the master dictionary
+            for pair in data["Table"]:
+                natmusymDict[pair[0]] = pair[1]
 
-        # convert the data dictionary to a list of lists
-        dataList = data["Table"]
+            del jData,req,resp,jsonString,data
 
-        # Remove the first 2 items from dataList: fields and column metadata-columninfo
-        """ [[u'753571', u'2tjpl'], [u'753574', u'2szdz'], [u'2809844', u'2v3f0']] """
-        columnNames = dataList.pop(0)  # [u'mukey', u'natmusym']
-        columnInfo = dataList.pop(0)
+##        # Remove the first 2 items from dataList: fields and column metadata-columninfo
+##        """ [[u'753571', u'2tjpl'], [u'753574', u'2szdz'], [u'2809844', u'2v3f0']] """
+##        columnNames = dataList.pop(0)  # [u'mukey', u'natmusym']
+##        columnInfo = dataList.pop(0)
 
         # Warn user about a discrepancy in mukey count
-        if len(mukeyList) != len(dataList):
+        if iNumOfMukeys != len(natmusymDict):
             AddMsgAndPrint("\tWarning! NATMUSYM value was not returned for the following " + splitThousands(len(mukeyList) - len(dataList)) + " MUKEYS", 1)
 
             # subtract both lists to see which MUKEYS had no NATSYM
             iNoMatches = list(set(mukeyList) - set([f[0] for f in dataList]))
             AddMsgAndPrint("\n\t\t" + str(iNoMatches),2)
 
+        """ --------------------------------------------------  Add NATMUSYM to the Feature Layer ---------------------------------------------------"""
         # Add the 'NATMUSYM' field to inputFeature if not present
         if not "natmusym" in [f.name.lower() for f in arcpy.ListFields(featureLayer)]:
-            arcpy.AddField_management(featureLayer,str(columnNames[1]).upper(),'TEXT','#','#',23,'National MU Symbol')
+            arcpy.AddField_management(featureLayer,'NATMUSYM','TEXT','#','#',23,'National MU Symbol')
+
+        mukeyField = FindField(featureLayer,"MUKEY")
 
         AddMsgAndPrint("\nImporting NATMUSYM Values",0)
         arcpy.SetProgressorLabel("Importing NATMUSYM Values")
-        arcpy.SetProgressor("step", "Importing NATMUSYM Values", 0, len(dataList),1)
+        arcpy.SetProgressor("step", "Importing NATMUSYM Values", 0, len(natmusymDict),1)
 
         # itereate through mukey,natmusym values and update the NATMUSYM field
         # [[u'753571', u'2tjpl'], [u'753574', u'2szdz'], [u'2809844', u'2v3f0']]
-        for rec in dataList:
-            mukey,natmusym = rec[0],rec[1]
+        for rec in natmusymDict:
+            mukey,natmusym = rec,natmusymDict[rec]
 
-            expression = arcpy.AddFieldDelimiters(featureLayer,columnNames[0]) + " = '" + mukey + "'"
-            with arcpy.da.UpdateCursor(featureLayer, columnNames[1], where_clause=expression) as cursor:
+            expression = arcpy.AddFieldDelimiters(featureLayer,mukeyField) + " = '" + mukey + "'"
+            with arcpy.da.UpdateCursor(featureLayer, mukeyField, where_clause=expression) as cursor:
 
                 for row in cursor:
                     row[0] = natmusym
@@ -304,7 +361,7 @@ from arcpy import env
 if __name__ == '__main__':
 
     inputFeature = arcpy.GetParameterAsText(0)
-    #inputFeature = r'K:\SSURGO_FY17\2017_WSS_downloads_SSURGO_Region10\soil_wi025\spatial\soilmu_a_wi025.shp'
+    #inputFeature = r'C:\Temp\Export_Output.shp'
 
     try:
 
