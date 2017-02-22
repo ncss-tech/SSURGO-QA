@@ -2,13 +2,13 @@
 #
 # 4/27/2012
 #
-# Adolfo Diaz, MLRA GIS Specialist
+# Adolfo Diaz, Region 10 GIS Specialist
 # USDA - Natural Resources Conservation Service
 # Madison, WI 53719
 # adolfo.diaz@wi.usda.gov
 # 608.662.4422 ext. 216
 #
-# Some subfunctions were directly copied and modified from Steve Peaslee's "Setup_UpdateSurvey_Dev.py."
+# Some subfunctions were modified from Steve Peaslee's "Setup_UpdateSurvey_Dev.py."
 # Thanks to Steve for doing the leg work on some of these subfunctions.
 #
 # This script was tested using ArcGIS 10 SP4. No known issues were encountered.
@@ -124,6 +124,8 @@
 #       and other times it would fail.  Steve Peaslee modified some of the code within the importTabular function
 #       to remove continue statements from within if statements.  So many versions were created in an effort to
 #       troubleshoot this problem that I decided to print the version of the script in the log file.
+#
+#  Last updated 2/22/2017
 #
 # Beginning of Functions
 ## ===================================================================================
@@ -732,7 +734,7 @@ def CreateTableRelationships(tblAliases):
             formatTab1 = 15 - len(soilFC)
             formatTabLength1 = " " * formatTab1 + "--> "
 
-            AddMsgAndPrint("\nCreating Relationships between Featureclasses and Tables:", 1)
+            AddMsgAndPrint("\nCreating Relationships between spatial feature classes and tables:", 1)
 
             # Relationship between MUPOLYGON --> Mapunit Table
             if not arcpy.Exists("xSpatial_MUPOLYGON_Mapunit"):
@@ -837,6 +839,35 @@ def updateAliasNames(fgdbPath, GDBname):
         print_exception()
         return False
 
+## ===============================================================================================================
+def addAttributeIndex(fgdbPath):
+
+    try:
+
+        arcpy.env.workspace = fgdbPath
+        fcs = arcpy.ListFeatureClasses("*")
+
+        indexFields = ["MUSYM","FEATSYM","AREASYMBOL"]
+
+        for fc in fcs:
+
+            fields = [f.name for f in arcpy.ListFields(arcpy.env.workspace + os.sep + fc,"*")]
+
+            for field in fields:
+                if field in indexFields:
+                    arcpy.AddIndex_management(fc,field,field.lower())
+
+        return True
+
+    except arcpy.ExecuteError:
+        AddMsgAndPrint(arcpy.GetMessages(2),2)
+        return False
+
+    except:
+        print_exception()
+        return False
+
+
 ## ====================================== Main Body ===========================================================
 # Import modules
 import arcpy, sys, string, os, time, datetime, re, csv, traceback, shutil
@@ -897,7 +928,7 @@ try:
     # process each selected soil survey
     AddMsgAndPrint("\nValidating " + str(len(surveyList)) + " selected surveys...", 0)
 
-    # --------------------------------------------------------------------------------------Create necessary File Geodatabases
+    # --------------------------------------------------------------------------------------Create necessary File Geodatabase
     # Create new File Geodatabase, Feature Dataset and Feature Classes.
 
     # SSURGO layer Name
@@ -930,9 +961,11 @@ try:
         if not createFGDB(GDBname,outputFolder,spatialRef):
             raise MyError, "\nFailed to Initiate File Geodatabase. Exiting!"
 
+        if not createFeatureClasses(FGDBpath,spatialRef):
+            raise MyError, "\nFailed to Initiate File Geodatabase. Exiting!"
+
     # Set environment variables to ITRF0 if going between WGS84 and NAD1983
     env.workspace = FGDBpath
-    env.geographicTransformations = "WGS_1984_(ITRF00)_To_NAD_1983"  # WKID 108190
     env.outputCoordinateSystem = spatialRef
 
     # Parse Datum from user spatial reference; can only get datum from a GCS not a projected one
@@ -947,6 +980,10 @@ try:
 
     if userDatum == "D_North_American_1983":
         AddMsgAndPrint("\tGeographic Transformation: WGS_1984_(ITRF00)_To_NAD_1983",0 )
+        env.geographicTransformations = "WGS_1984_(ITRF00)_To_NAD_1983"  # WKID 108190
+    else:
+        AddMsgAndPrint("\nCannot handle user Datum: " + str(userDatum) + " Exiting",2)
+        sys.exit()
 
     # ---------------------------------------------------------------------------------------Begin the Merging Process
 
@@ -999,16 +1036,16 @@ try:
 
         # Paths to individual SSURGO layers
         if bSTATSGO:
-            shpPrefix = "gsmsoilmu_a_"
+            soilShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "gsmsoilmu_a_" + SSA + ".shp")
         else:
-            shpPrefix = "soilmu_a_"
+            soilShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "soilmu_a_" + SSA + ".shp")
 
-        soilShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), shpPrefix + SSA + ".shp")
-        muLineShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), shpPrefix + SSA + ".shp")
-        muPointShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), shpPrefix + SSA + ".shp")
-        soilSaShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), shpPrefix + SSA + ".shp")
-        featPointShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), shpPrefix + SSA + ".shp")
-        featLineShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), shpPrefix + SSA + ".shp")
+        if not bSTATSGO:
+            muLineShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "soilmu_l_" + SSA + ".shp")
+            muPointShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "soilmu_p_" + SSA + ".shp")
+            soilSaShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "soilsa_a_" + SSA + ".shp")
+            featPointShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "soilsf_p_" + SSA + ".shp")
+            featLineShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "soilsf_l_" + SSA + ".shp")
 
         if arcpy.Exists(soilShpPath):
 
@@ -1024,11 +1061,13 @@ try:
 
                 # Assign {-4002.988250799742: 'K:\\FY2014_SSURGO_R10_download\\soils_wi063\\spatial\\soilmu_a_wi063.shp'}
                 soilShpDict[surveyCenter] = soilShpPath
-                muLineShpDict[surveyCenter] = muLineShpPath
-                muPointShpDict[surveyCenter] = muPointShpPath
-                soilSaShpDict[surveyCenter] = soilSaShpPath
-                featPointShpDict[surveyCenter] = featPointShpPath
-                featLineShpDict[surveyCenter] = featLineShpPath
+
+                if not bSTATSGO:
+                    muLineShpDict[surveyCenter] = muLineShpPath
+                    muPointShpDict[surveyCenter] = muPointShpPath
+                    soilSaShpDict[surveyCenter] = soilSaShpPath
+                    featPointShpDict[surveyCenter] = featPointShpPath
+                    featLineShpDict[surveyCenter] = featLineShpPath
 
                 extentList.append(surveyCenter)
 
@@ -1043,7 +1082,11 @@ try:
             AddMsgAndPrint("\nMissing soil polygon shapefile: soilmu_a_" + SSA + ".shp",2)
             continue
 
-        del soilShpPath, muLineShpPath, muPointShpPath, soilSaShpPath, featPointShpPath, featLineShpPath
+        try:
+            del soilShpPath, muLineShpPath, muPointShpPath, soilSaShpPath, featPointShpPath, featLineShpPath
+        except:
+            pass
+
         arcpy.SetProgressorPosition()
 
     # ----------------------------------------------------------------------------------------------------------------------------- Begin the Merging Process
@@ -1280,10 +1323,17 @@ try:
 
         del i
 
+    # --------------------------------------------------  Add Field Aliases
     if updateAliasNames(FGDBpath, GDBname):
-        AddMsgAndPrint("\nSuccessfully Updated Alias Names for Feature Classes within " + os.path.basename(FGDBpath))
+        AddMsgAndPrint("\nSuccessfully updated alias names for feature classes within " + os.path.basename(FGDBpath))
     else:
-        AddMsgAndPrint("\nUnable to Update Alias Names for Feature Classes within " + os.path.basename(FGDBpath),2)
+        AddMsgAndPrint("\nUnable to update alias names for feature classes within " + os.path.basename(FGDBpath),2)
+
+    # --------------------------------------------------  Add Attribute Indices
+    if addAttributeIndex(FGDBpath):
+        AddMsgAndPrint("\nSuccessfully added attribute indices for feature classes within " + os.path.basename(FGDBpath))
+    else:
+        AddMsgAndPrint("\nUnable to add attribute indices for feature classes within " + os.path.basename(FGDBpath),2)
 
     # -----------------------------------------------------------------------------------------
     env.workspace = FGDBpath
