@@ -1,6 +1,6 @@
 # Import_SSURGO_Datasets_into_FGDB_ArcGIS10
 #
-# 4/27/2012
+# Created 4/27/2012
 #
 # Adolfo Diaz, Region 10 GIS Specialist
 # USDA - Natural Resources Conservation Service
