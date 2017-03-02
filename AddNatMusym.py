@@ -1,6 +1,21 @@
+#-------------------------------------------------------------------------------
+# Name:        AddNATMusym
+#              Add National Mapunit Symbol
+#
+# Author: Adolfo.Diaz
+# e-mail: adolfo.diaz@wi.usda.gov
+# phone: 608.662.4422 ext. 216
+#
+# Created:     2/21/2017
+# Last Modified: 2/21/2017
+
 # Code copied from SDA_CustomQuery script and modified to get NationalMusym from Soil Data Access
 # Steve Peaslee 10-18-2016
 
+# Completely modified by Adolfo Diaz 02/21/2017 to update a user specific feature layer.
+# Due to limitations from SDMaccess in terms of the number of mukeys it can accept the total
+# number of mukeys need to be split into lists of no more than 1000 mukeys.
+#
 
 ## ===================================================================================
 def AddMsgAndPrint(msg, severity=0):
@@ -54,8 +69,8 @@ def GetMukeys(theInput):
     # Create a list of unique MUKEY values from spatial layer for use in SDA query
 
     try:
-        AddMsgAndPrint("\nCompiling a list of unique MUKEY values",0)
-        arcpy.SetProgressorLabel("Compiling a list of unique MUKEY values")
+        AddMsgAndPrint("\nCompiling a list of unique MUKEY values from " + splitThousands(int(arcpy.GetCount_management(theInput).getOutput(0))),0)
+        arcpy.SetProgressorLabel("Compiling a list of unique MUKEY values from " + splitThousands(int(arcpy.GetCount_management(theInput).getOutput(0))))
 
         # Describe the input data
         theDesc = arcpy.Describe(theInput)
@@ -94,7 +109,7 @@ def GetMukeys(theInput):
 
             arcpy.ResetProgressor()
 
-            AddMsgAndPrint("\tThere are " + splitThousands(len(mukeyList)) + " unique MUKEY values", 1)
+            AddMsgAndPrint("\tThere are " + splitThousands(len(mukeyList)) + " unique MUKEY values")
 
         else:
             AddMsgAndPrint("\n\tThere are no features in layer.  Empty Geometry. EXITING",2)
@@ -172,7 +187,7 @@ def parseMukeysIntoLists(mukeyList):
             # End of mukey list NOT reached
             else:
                 # 1000 mukeys have been reached; reset tempMukeyList
-                if j == 30:
+                if j == 1000:
                     listOfMukeyStrings.append(tempMukeyList)
                     tempMukeyList = []
                     j=0
@@ -184,7 +199,7 @@ def parseMukeysIntoLists(mukeyList):
             sys.exit()
 
         else:
-            AddMsgAndPrint("\t" + str(len(listOfMukeyStrings)) + " requests are needed to obtain NATSYM values for this layer")
+            AddMsgAndPrint("\t" + str(len(listOfMukeyStrings)) + " request(s) are needed to obtain NATSYM values for this layer")
             return listOfMukeyStrings
 
     except:
@@ -201,7 +216,7 @@ def getNATMUSYM(listsOfMUKEYs, featureLayer):
 
     try:
 
-        AddMsgAndPrint("\nSubmitting individual Requests to SDMaccess")
+        AddMsgAndPrint("\nSubmitting " + str(len(listsOfMUKEYs)) + " request(s) to the SDMaccess")
         arcpy.SetProgressor("step", "Sending tabular request to Soil Data Mart Access", 0, len(listsOfMUKEYs),1)
 
         # Total Count of MUKEYs
@@ -218,7 +233,7 @@ def getNATMUSYM(listsOfMUKEYs, featureLayer):
         # Iterate through each MUKEY list that has been parsed for no more than 1000 mukeys
         for mukeyList in listsOfMUKEYs:
 
-            arcpy.SetProgressorLabel("Requesting NATSYM values for " + str(len(mukeyList)) + " mukeys. Request " + str(iRequestNum) + " of " + len(listsOfMUKEYs))
+            arcpy.SetProgressorLabel("Requesting NATSYM values for " + str(len(mukeyList)) + " mukeys. Request " + str(iRequestNum) + " of " + str(len(listsOfMUKEYs)))
 
             iNumOfMukeys+=len(mukeyList)
             iRequestNum+=1
@@ -254,6 +269,7 @@ def getNATMUSYM(listsOfMUKEYs, featureLayer):
                         resp = urllib2.urlopen(req)
 
                     except URLError, e:
+                        AddMsgAndPrint(sQuery)
                         if hasattr(e, 'reason'):
                             AddMsgAndPrint("\n\t" + URL,2)
                             AddMsgAndPrint("\tURL Error: " + str(e.reason), 2)
@@ -305,6 +321,7 @@ def getNATMUSYM(listsOfMUKEYs, featureLayer):
 ##        columnNames = dataList.pop(0)  # [u'mukey', u'natmusym']
 ##        columnInfo = dataList.pop(0)
 
+        """ --------------------------------------  Check the number of mukeys submitted vs. natmusym values received -----------------------------"""
         # Warn user about a discrepancy in mukey count
         if iNumOfMukeys != len(natmusymDict):
             AddMsgAndPrint("\tWarning! NATMUSYM value was not returned for the following " + splitThousands(len(mukeyList) - len(dataList)) + " MUKEYS", 1)
@@ -321,16 +338,17 @@ def getNATMUSYM(listsOfMUKEYs, featureLayer):
         mukeyField = FindField(featureLayer,"MUKEY")
 
         AddMsgAndPrint("\nImporting NATMUSYM Values",0)
-        arcpy.SetProgressorLabel("Importing NATMUSYM Values")
-        arcpy.SetProgressor("step", "Importing NATMUSYM Values", 0, len(natmusymDict),1)
+        arcpy.SetProgressor("step", "Importing NATMUSYM Values into " + os.path.basename(featureLayer) + " layer", 0, len(natmusymDict),1)
 
         # itereate through mukey,natmusym values and update the NATMUSYM field
         # [[u'753571', u'2tjpl'], [u'753574', u'2szdz'], [u'2809844', u'2v3f0']]
         for rec in natmusymDict:
+
             mukey,natmusym = rec,natmusymDict[rec]
+            arcpy.SetProgressorLabel("Importing NATMUSYM Values: " + mukey + " : " + natmusym)
 
             expression = arcpy.AddFieldDelimiters(featureLayer,mukeyField) + " = '" + mukey + "'"
-            with arcpy.da.UpdateCursor(featureLayer, mukeyField, where_clause=expression) as cursor:
+            with arcpy.da.UpdateCursor(featureLayer, 'NATMUSYM', where_clause=expression) as cursor:
 
                 for row in cursor:
                     row[0] = natmusym
@@ -341,7 +359,7 @@ def getNATMUSYM(listsOfMUKEYs, featureLayer):
 
         arcpy.ResetProgressor()
 
-        AddMsgAndPrint("\tSuccessfully populated 'NATMUSYM' values for " + splitThousands(len(dataList)) + " mapunits \n",0)
+        AddMsgAndPrint("\tSuccessfully populated 'NATMUSYM' values for " + splitThousands(int(arcpy.GetCount_management(featureLayer).getOutput(0))) + " polygons \n",0)
         return True
 
     except urllib2.HTTPError:
@@ -356,6 +374,7 @@ def getNATMUSYM(listsOfMUKEYs, featureLayer):
 ## ====================================== Main Body ==================================
 # Import modules
 import sys, string, os, locale, arcpy, traceback, urllib2, httplib, json, re
+from urllib2 import urlopen, URLError, HTTPError
 from arcpy import env
 
 if __name__ == '__main__':
