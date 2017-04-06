@@ -233,7 +233,7 @@ def getNATMUSYM(listsOfValues, featureLayer):
         iNumOfValues = 0
         iRequestNum = 1
 
-        # master mukey:natmusym dictionary
+        # master mukey:natmusym,muname dictionary
         natmusymDict = dict()
 
         # SDMaccess URL
@@ -251,15 +251,17 @@ def getNATMUSYM(listsOfValues, featureLayer):
             # convert the list into a comma seperated string
             values = ",".join(valueList)
 
+            # use this query if submitting natsym request by areasymbol
             if bAreaSym:
-                sQuery = "SELECT mapunit.mukey, nationalmusym, muname\
-                          FROM sacatalog\
-                          INNER JOIN legend ON legend.areasymbol = sacatalog.areasymbol AND sacatalog.areasymbol IN (" + values + ")\
-                          INNER JOIN mapunit ON mapunit.lkey = legend.lkey"
+                sQuery = 'SELECT mapunit.mukey, nationalmusym, muname '\
+                          'FROM sacatalog' \
+                          'INNER JOIN legend ON legend.areasymbol = sacatalog.areasymbol AND sacatalog.areasymbol IN ("' + values + '")' \
+                          'INNER JOIN mapunit ON mapunit.lkey = legend.lkey'
 
             else:
                 # 'SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (753574,2809844,753571)'
                 sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (" + values + ")"
+                sQuery = "SELECT m.mukey, m.nationalmusym, m.muname as natmusym from mapunit m where mukey in (" + values + ")"
                 #sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from legend AS l INNER JOIN mapunit AS m ON l.lkey=m.mukey AND m.mukey in (" + mukeys + ")"
 
             # Create request using JSON, return data as JSON
@@ -315,7 +317,7 @@ def getNATMUSYM(listsOfValues, featureLayer):
             jsonString = resp.read()
             data = json.loads(jsonString)
 
-            """{u'Table': [[u'mukey', u'natmusym'],
+            """{u'Table': [[u'mukey', u'natmusym',u'muname'],
                         [u'ColumnOrdinal=0,ColumnSize=4,NumericPrecision=10,NumericScale=255,ProviderType=Int,IsLong=False,ProviderSpecificDataType=System.Data.SqlTypes.SqlInt32,DataTypeName=int',
                          u'ColumnOrdinal=1,ColumnSize=6,NumericPrecision=255,NumericScale=255,ProviderType=VarChar,IsLong=False,ProviderSpecificDataType=System.Data.SqlTypes.SqlString,DataTypeName=varchar'],
                         [u'753571', u'2tjpl'],
@@ -324,12 +326,12 @@ def getNATMUSYM(listsOfValues, featureLayer):
 
             # Nothing was returned from SDaccess
             if not "Table" in data:
-                AddMsgAndPrint("\tWarning! NATMUSYM value were not returned for any of the MUKEY values.  Possibly OLD mukey values.",2)
+                AddMsgAndPrint("\tWarning! NATMUSYM value were not returned for any of the " + field + "  values.  Possibly OLD mukey values.",2)
                 continue
 
             # Add the mukey:natmusym Values to the master dictionary
             for pair in data["Table"]:
-                natmusymDict[pair[0]] = pair[1]
+                natmusymDict[pair[0]] = (pair[1],pair[2])
 
             del jData,req,resp,jsonString,data
 
@@ -390,7 +392,7 @@ def getNATMUSYM(listsOfValues, featureLayer):
 ## ===================================================================================
 ## ====================================== Main Body ==================================
 # Import modules
-import sys, string, os, locale, arcpy, traceback, urllib2, httplib, json, re
+import sys, string, os, locale, arcpy, traceback, urllib2, httplib, json, re, socket
 from urllib2 import urlopen, URLError, HTTPError
 from arcpy import env
 
