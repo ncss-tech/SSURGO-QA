@@ -65,68 +65,6 @@ def splitThousands(someNumber):
         return someNumber
 
 ## ================================================================================================================
-def GetMukeys(theInput):
-    # Create a list of unique MUKEY values from spatial layer for use in SDA query
-
-    try:
-        AddMsgAndPrint("\nCompiling a list of unique MUKEY values from " + splitThousands(int(arcpy.GetCount_management(theInput).getOutput(0))),0)
-        arcpy.SetProgressorLabel("Compiling a list of unique MUKEY values from " + splitThousands(int(arcpy.GetCount_management(theInput).getOutput(0))))
-
-        # Describe the input data
-        theDesc = arcpy.Describe(theInput)
-        theDataType = theDesc.dataType
-
-        # Get Featureclass and total count
-        if theDataType.lower() == "featurelayer":
-            theFC = theDesc.featureClass.catalogPath
-            featureCount = int(arcpy.GetCount_management(theFC).getOutput(0))
-
-        elif theDataType.lower() in ["featureclass", "shapefile"]:
-            theFC = theInput
-            featureCount = int(arcpy.GetCount_management(theInput).getOutput(0))
-
-        else:
-            AddMsgAndPrint("\nUnknown data type: " + theDataType.lower(),2)
-            sys.exit()
-
-        mukeyField = FindField(theFC,"MUKEY")
-        mukeyList = list()
-
-        # Exit if "MUKEY" doesn't exist
-        if not mukeyField:
-            AddMsgAndPrint("\t\"MUKEY\" field is missing! -- Cannot get MUKEY Values.  EXITING!",2)
-            sys.exit()
-
-        arcpy.SetProgressor("step", "Compiling a list of unique MUKEY values", 0, int(arcpy.GetCount_management(theInput).getOutput(0)),1)
-        if featureCount:
-
-            with arcpy.da.SearchCursor(theInput, [mukeyField]) as cur:
-                for rec in cur:
-                    if not rec[0] in mukeyList:
-                        mukeyList.append(rec[0])
-
-                    arcpy.SetProgressorPosition()
-
-            arcpy.ResetProgressor()
-
-            AddMsgAndPrint("\tThere are " + splitThousands(len(mukeyList)) + " unique MUKEY values")
-
-        else:
-            AddMsgAndPrint("\n\tThere are no features in layer.  Empty Geometry. EXITING",2)
-            sys.exit()
-
-        if not len(mukeyList):
-            AddMsgAndPrint("\n\tThere are no MUKEYS in layer. EXITING",2)
-            sys.exit()
-
-        return parseMukeysIntoLists(mukeyList)
-
-    except:
-        errorMsg()
-        AddMsgAndPrint("\nCould not retrieve list of MUKEYs",2)
-        sys.exit()
-
-## ================================================================================================================
 def FindField(layer,chkField):
     # Check table or featureclass to see if specified field exists
     # If fully qualified name is found, return that name; otherwise return ""
@@ -161,66 +99,138 @@ def FindField(layer,chkField):
         errorMsg()
         return False
 
+## ================================================================================================================
+def GetUniqueValues(theInput,theField):
+    # Create a list of unique values from spatial layer for use in SDA query
+
+    try:
+        # Describe the input data
+        theDesc = arcpy.Describe(theInput)
+        theDataType = theDesc.dataType
+
+        # Get Featureclass and total count
+        if theDataType.lower() == "featurelayer":
+            theFC = theDesc.featureClass.catalogPath
+            featureCount = int(arcpy.GetCount_management(theFC).getOutput(0))
+
+        elif theDataType.lower() in ["featureclass", "shapefile"]:
+            theFC = theInput
+            featureCount = int(arcpy.GetCount_management(theInput).getOutput(0))
+
+        else:
+            AddMsgAndPrint("\nUnknown data type: " + theDataType.lower(),2)
+            sys.exit()
+
+        AddMsgAndPrint("\nCompiling a list of unique" + theField + " values from " + splitThousands(featureCount) + " polygons")
+
+        valueList = list()
+
+        arcpy.SetProgressor("step", "Compiling a list of unique" + theField + "values", 0, featureCount,1)
+        if featureCount:
+
+            with arcpy.da.SearchCursor(theInput, [theField]) as cur:
+                for rec in cur:
+
+                    if bAreaSym:
+                        if not len(rec[0]) == 5:
+                            AddMsgAndPrint("\t" + str(rec[0]) + " is not a valid AREASYMBOL",2)
+                            continue
+
+                    if not rec[0] in valueList:
+                        valueList.append(rec[0])
+
+                    arcpy.SetProgressorPosition()
+            arcpy.ResetProgressor()
+
+            AddMsgAndPrint("\tThere are " + splitThousands(len(valueList)) + " unique" + theField + " values")
+
+        else:
+            AddMsgAndPrint("\n\tThere are no features in layer.  Empty Geometry. EXITING",2)
+            sys.exit()
+
+        if not len(valueList):
+            AddMsgAndPrint("\n\tThere were no" + theField + " values in layer. EXITING",2)
+            sys.exit()
+
+        # if number of Areasymbols exceed 300 than parse areasymbols
+        # into lists containing no more than 300 areasymbols
+        if bAreaSym:
+            if len(valueList) > 300:
+                return parseMukeysIntoLists(valueList,300)
+            else:
+                return valueList
+        else:
+            return parseMukeysIntoLists(valueList)
+
+    except:
+        errorMsg()
+        AddMsgAndPrint("\nCould not retrieve list of unique values from " + theField + " field",2)
+        sys.exit()
+
 ## ===============================================================================================================
-def parseMukeysIntoLists(mukeyList):
-    """ This function will parse MUKEY values into manageable chunks that will be sent to the SDaccess query.
-        This function returns lists of mukey lists no larger than 1000 mukeys."""
+def parseValuesIntoLists(valueList,limit=1000):
+    """ This function will parse values into manageable chunks that will be sent to the SDaccess query.
+        This function returns a list containing lists of values comprised of no more than what
+        the 'limit' is set to. Default Limit set to 1000, this will be used if the value list is
+        made up of MUKEYS.  Limit will be set to 300 if value list contains areasymbols"""
 
     try:
         arcpy.SetProgressorLabel("\nDetermining the number of requests to send to SDaccess Server")
 
         i = 0 # Total Count
-        j = 0 # Mukey count; resets at 1000
+        j = 0 # Mukey count; resets whenever the 'limit' is reached.
 
-        listOfMukeyStrings = list()  # List containing pedonIDstring lists; individual lists are comprised of about 265 pedons
-        tempMukeyList = list()
+        listOfValueStrings = list()  # List containing lists of values
+        tempValueList = list()
 
-        for mukey in mukeyList:
+        for value in valueList:
             i+=1
             j+=1
-            tempMukeyList.append(mukey)
+            tempValueList.append(value)
 
             # End of mukey list has been reached
-            if i == len(mukeyList):
-                listOfMukeyStrings.append(tempMukeyList)
+            if i == len(valueList):
+                listOfValueStrings.append(tempValueList)
 
             # End of mukey list NOT reached
             else:
-                # 1000 mukeys have been reached; reset tempMukeyList
-                if j == 1000:
-                    listOfMukeyStrings.append(tempMukeyList)
+                # max limit has been reached; reset tempValueList
+                if j == limit:
+                    listOfValueStrings.append(tempValueList)
                     tempMukeyList = []
                     j=0
 
-        del i,j,tempMukeyList
+        del i,j,tempValueList
 
-        if not len(listOfMukeyStrings):
-            AddMsgAndPrint("\tCould not Parse MUKEY list into manageable sets",2)
+        if not len(listOfValueStrings):
+            AddMsgAndPrint("\tCould not Parse value list into manageable sets",2)
             sys.exit()
 
         else:
-            AddMsgAndPrint("\t" + str(len(listOfMukeyStrings)) + " request(s) are needed to obtain NATSYM values for this layer")
+            AddMsgAndPrint("\t" + str(len(listOfValueStrings)) + " request(s) are needed to obtain NATSYM values for this layer")
             return listOfMukeyStrings
 
     except:
-        AddMsgAndPrint("Unhandled exception (createFGDB)", 2)
+        AddMsgAndPrint("Unhandled exception (parseValuesIntoLists)", 2)
         errorMsg()
         sys.exit()
 
 ## ===================================================================================
-def getNATMUSYM(listsOfMUKEYs, featureLayer):
-    # POST REST which uses urllib and JSON
-    # Send query to SDM Tabular Service, returning data in JSON format
-    # Sends a list of MUKEYS and returns a pair for each MUKEY [MUKEY,NATMUSYM]
-    # Adds NATMUSYM field to inputFeature layer if not present.
+def getNATMUSYM(listsOfValues, featureLayer):
+    """POST REST which uses urllib and JSON to send query to SDM Tabular Service and
+       returns data in JSON format.  Sends a list of values (either MUKEYs or Areasymbols)
+       and returns NATSYM values.  If MUKEYS are submitted a pair of values are returned
+       [MUKEY,NATMUSYM].  If areasymbols are submitted than a list of all of MUKEY,NATSYM
+       pairs that pertain to that areasymbol are returned.
+       Adds NATMUSYM field to inputFeature layer if not present and populates."""
 
     try:
 
-        AddMsgAndPrint("\nSubmitting " + str(len(listsOfMUKEYs)) + " request(s) to the SDMaccess")
-        arcpy.SetProgressor("step", "Sending tabular request to Soil Data Mart Access", 0, len(listsOfMUKEYs),1)
+        AddMsgAndPrint("\nSubmitting " + str(len(listsOfValues)) + " request(s) to the SDMaccess")
+        arcpy.SetProgressor("step", "Sending tabular request to Soil Data Mart Access", 0, len(listsOfValues),1)
 
-        # Total Count of MUKEYs
-        iNumOfMukeys = 0
+        # Total Count of values
+        iNumOfValues = 0
         iRequestNum = 1
 
         # master mukey:natmusym dictionary
@@ -231,19 +241,26 @@ def getNATMUSYM(listsOfMUKEYs, featureLayer):
 
         """ ---------------------------------------- Iterate through lists of MUKEYS to submit requests for natsym ------------------------------"""
         # Iterate through each MUKEY list that has been parsed for no more than 1000 mukeys
-        for mukeyList in listsOfMUKEYs:
+        for valueList in listsOfValues:
 
-            arcpy.SetProgressorLabel("Requesting NATSYM values for " + str(len(mukeyList)) + " mukeys. Request " + str(iRequestNum) + " of " + str(len(listsOfMUKEYs)))
+            arcpy.SetProgressorLabel("Requesting NATSYM values for " + str(len(valueList)) + " mukeys. Request " + str(iRequestNum) + " of " + str(len(listsOfValues)))
 
-            iNumOfMukeys+=len(mukeyList)
+            iNumOfValues+=len(valueList)
             iRequestNum+=1
 
             # convert the list into a comma seperated string
-            mukeys = ",".join(mukeyList)
+            values = ",".join(valueList)
 
-            # 'SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (753574,2809844,753571)'
-            sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (" + mukeys + ")"
-            #sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from legend AS l INNER JOIN mapunit AS m ON l.lkey=m.mukey AND m.mukey in (" + mukeys + ")"
+            if bAreaSym:
+                sQuery = "SELECT mapunit.mukey, nationalmusym, muname\
+                          FROM sacatalog\
+                          INNER JOIN legend ON legend.areasymbol = sacatalog.areasymbol AND sacatalog.areasymbol IN (" + values + ")\
+                          INNER JOIN mapunit ON mapunit.lkey = legend.lkey"
+
+            else:
+                # 'SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (753574,2809844,753571)'
+                sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (" + values + ")"
+                #sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from legend AS l INNER JOIN mapunit AS m ON l.lkey=m.mukey AND m.mukey in (" + mukeys + ")"
 
             # Create request using JSON, return data as JSON
             dRequest = dict()
@@ -323,11 +340,11 @@ def getNATMUSYM(listsOfMUKEYs, featureLayer):
 
         """ --------------------------------------  Check the number of mukeys submitted vs. natmusym values received -----------------------------"""
         # Warn user about a discrepancy in mukey count
-        if iNumOfMukeys != len(natmusymDict):
-            AddMsgAndPrint("\tWarning! NATMUSYM value was not returned for the following " + splitThousands(len(mukeyList) - len(dataList)) + " MUKEYS", 1)
+        if iNumOfValues != len(natmusymDict):
+            AddMsgAndPrint("\tWarning! NATMUSYM value was not returned for the following " + splitThousands(len(valueList) - len(dataList)) + " MUKEYS", 1)
 
             # subtract both lists to see which MUKEYS had no NATSYM
-            iNoMatches = list(set(mukeyList) - set([f[0] for f in dataList]))
+            iNoMatches = list(set(valueList) - set([f[0] for f in dataList]))
             AddMsgAndPrint("\n\t\t" + str(iNoMatches),2)
 
         """ --------------------------------------------------  Add NATMUSYM to the Feature Layer ---------------------------------------------------"""
@@ -383,13 +400,24 @@ if __name__ == '__main__':
     #inputFeature = r'C:\Temp\Export_Output.shp'
 
     try:
+        try:
+            FindField(theInput,"AREASYMBOL")
+            field = "AREASYMBOL"
+            bAreaSym = True
+        except:
+            try:
+                FindField(theInput,"MUKEY")
+                field = "MUKEY"
+                bAreaSym = False
+            except:
+                AddMsgAndPrint("\t\"AREASYMBOL\" and \"MUKEY\" fields are missing! -- Need one or the other to continue.  EXITING!",2)
+                sys.exit()
 
     	# Get list of unique mukeys for use in tabular request
-        mukeyList = GetMukeys(inputFeature)
+        uniqueValueList = GetUniqueValues(inputFeature,field)
 
         # populate inputFeature with NATMUSYM
-        if not getNATMUSYM(mukeyList, inputFeature):
+        if not getNATMUSYM(uniqueValueList, inputFeature):
             AddMsgAndPrint("\nFailed to update NATSYM field",2)
 
     except:
-        errorMsg()
