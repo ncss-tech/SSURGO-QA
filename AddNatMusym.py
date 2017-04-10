@@ -1,13 +1,13 @@
 #-------------------------------------------------------------------------------
-# Name:        AddNATMusym
-#              Add National Mapunit Symbol
+# Name:        Insert NATSYM and MUNAME Value
+#              Insert the National Mapunit Symbol and Mapunit Name to feature layer
 #
 # Author: Adolfo.Diaz
 # e-mail: adolfo.diaz@wi.usda.gov
 # phone: 608.662.4422 ext. 216
 #
 # Created:     2/21/2017
-# Last Modified: 2/21/2017
+# Last Modified: 4/7/2017
 
 # Code copied from SDA_CustomQuery script and modified to get NationalMusym from Soil Data Access
 # Steve Peaslee 10-18-2016
@@ -104,28 +104,16 @@ def GetUniqueValues(theInput,theField):
     # Create a list of unique values from spatial layer for use in SDA query
 
     try:
-        # Describe the input data
-        theDesc = arcpy.Describe(theInput)
-        theDataType = theDesc.dataType
+        featureCount = int(arcpy.GetCount_management(theInput).getOutput(0))
 
-        # Get Featureclass and total count
-        if theDataType.lower() == "featurelayer":
-            theFC = theDesc.featureClass.catalogPath
-            featureCount = int(arcpy.GetCount_management(theFC).getOutput(0))
-
-        elif theDataType.lower() in ["featureclass", "shapefile"]:
-            theFC = theInput
-            featureCount = int(arcpy.GetCount_management(theInput).getOutput(0))
-
+        if bFGDBmapunit:
+            AddMsgAndPrint("\nCompiling a list of unique " + theField + " values from " + splitThousands(featureCount) + " polygons using Mapunit Table")
         else:
-            AddMsgAndPrint("\nUnknown data type: " + theDataType.lower(),2)
-            sys.exit()
-
-        AddMsgAndPrint("\nCompiling a list of unique" + theField + " values from " + splitThousands(featureCount) + " polygons")
+            AddMsgAndPrint("\nCompiling a list of unique " + theField + " values from " + splitThousands(featureCount) + " polygons")
 
         valueList = list()
 
-        arcpy.SetProgressor("step", "Compiling a list of unique" + theField + "values", 0, featureCount,1)
+        arcpy.SetProgressor("step", "Compiling a list of unique " + theField + " values", 0, featureCount,1)
         if featureCount:
 
             with arcpy.da.SearchCursor(theInput, [theField]) as cur:
@@ -142,7 +130,7 @@ def GetUniqueValues(theInput,theField):
                     arcpy.SetProgressorPosition()
             arcpy.ResetProgressor()
 
-            AddMsgAndPrint("\tThere are " + splitThousands(len(valueList)) + " unique" + theField + " values")
+            AddMsgAndPrint("\tThere are " + splitThousands(len(valueList)) + " unique " + theField + " values")
 
         else:
             AddMsgAndPrint("\n\tThere are no features in layer.  Empty Geometry. EXITING",2)
@@ -154,13 +142,11 @@ def GetUniqueValues(theInput,theField):
 
         # if number of Areasymbols exceed 300 than parse areasymbols
         # into lists containing no more than 300 areasymbols
+        # if
         if bAreaSym:
-            if len(valueList) > 300:
-                return parseMukeysIntoLists(valueList,300)
-            else:
-                return valueList
+            return parseValuesIntoLists(valueList,300)
         else:
-            return parseMukeysIntoLists(valueList)
+            return parseValuesIntoLists(valueList)
 
     except:
         errorMsg()
@@ -186,7 +172,7 @@ def parseValuesIntoLists(valueList,limit=1000):
         for value in valueList:
             i+=1
             j+=1
-            tempValueList.append(value)
+            tempValueList.append(str(value))
 
             # End of mukey list has been reached
             if i == len(valueList):
@@ -197,7 +183,7 @@ def parseValuesIntoLists(valueList,limit=1000):
                 # max limit has been reached; reset tempValueList
                 if j == limit:
                     listOfValueStrings.append(tempValueList)
-                    tempMukeyList = []
+                    tempValueList = []
                     j=0
 
         del i,j,tempValueList
@@ -207,8 +193,8 @@ def parseValuesIntoLists(valueList,limit=1000):
             sys.exit()
 
         else:
-            AddMsgAndPrint("\t" + str(len(listOfValueStrings)) + " request(s) are needed to obtain NATSYM values for this layer")
-            return listOfMukeyStrings
+            #AddMsgAndPrint("\t" + str(len(listOfValueStrings)) + " request(s) are needed to obtain NATSYM values for this layer")
+            return listOfValueStrings
 
     except:
         AddMsgAndPrint("Unhandled exception (parseValuesIntoLists)", 2)
@@ -225,9 +211,8 @@ def getNATMUSYM(listsOfValues, featureLayer):
        Adds NATMUSYM field to inputFeature layer if not present and populates."""
 
     try:
-
-        AddMsgAndPrint("\nSubmitting " + str(len(listsOfValues)) + " request(s) to the SDMaccess")
-        arcpy.SetProgressor("step", "Sending tabular request to Soil Data Mart Access", 0, len(listsOfValues),1)
+        AddMsgAndPrint("\nSubmitting " + str(len(listsOfValues)) + " request(s) to Soil Data Access")
+        arcpy.SetProgressor("step", "Submitting request(s) to Soil Data Access", 0, len(listsOfValues),1)
 
         # Total Count of values
         iNumOfValues = 0
@@ -239,28 +224,26 @@ def getNATMUSYM(listsOfValues, featureLayer):
         # SDMaccess URL
         URL = "https://sdmdataaccess.nrcs.usda.gov/Tabular/SDMTabularService/post.rest"
 
-        """ ---------------------------------------- Iterate through lists of MUKEYS to submit requests for natsym ------------------------------"""
-        # Iterate through each MUKEY list that has been parsed for no more than 1000 mukeys
+        """ ---------------------------------------- Iterate through lists of unique values to submit requests for natsym ------------------------------"""
+        # Iterate through each list that has been parsed for no more than 1000 mukeys
         for valueList in listsOfValues:
-
-            arcpy.SetProgressorLabel("Requesting NATSYM values for " + str(len(valueList)) + " mukeys. Request " + str(iRequestNum) + " of " + str(len(listsOfValues)))
+            arcpy.SetProgressorLabel("Requesting NATSYM and MUNAME values for " + splitThousands(len(valueList)) + " " + sourceField + "(s). Request " + str(iRequestNum) + " of " + str(len(listsOfValues)))
 
             iNumOfValues+=len(valueList)
             iRequestNum+=1
 
             # convert the list into a comma seperated string
-            values = ",".join(valueList)
+            #values = ",".join(valueList)
+            values = str(valueList)[1:-1]
 
             # use this query if submitting natsym request by areasymbol
             if bAreaSym:
                 sQuery = 'SELECT mapunit.mukey, nationalmusym, muname '\
-                          'FROM sacatalog' \
-                          'INNER JOIN legend ON legend.areasymbol = sacatalog.areasymbol AND sacatalog.areasymbol IN ("' + values + '")' \
+                          'FROM sacatalog ' \
+                          'INNER JOIN legend ON legend.areasymbol = sacatalog.areasymbol AND sacatalog.areasymbol IN (' + values + ')' \
                           'INNER JOIN mapunit ON mapunit.lkey = legend.lkey'
 
             else:
-                # 'SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (753574,2809844,753571)'
-                sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from mapunit m where mukey in (" + values + ")"
                 sQuery = "SELECT m.mukey, m.nationalmusym, m.muname as natmusym from mapunit m where mukey in (" + values + ")"
                 #sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from legend AS l INNER JOIN mapunit AS m ON l.lkey=m.mukey AND m.mukey in (" + mukeys + ")"
 
@@ -288,7 +271,7 @@ def getNATMUSYM(listsOfValues, featureLayer):
                         resp = urllib2.urlopen(req)
 
                     except URLError, e:
-                        AddMsgAndPrint(sQuery)
+                        AddMsgAndPrint("\n\n" + sQuery,2)
                         if hasattr(e, 'reason'):
                             AddMsgAndPrint("\n\t" + URL,2)
                             AddMsgAndPrint("\tURL Error: " + str(e.reason), 2)
@@ -326,7 +309,7 @@ def getNATMUSYM(listsOfValues, featureLayer):
 
             # Nothing was returned from SDaccess
             if not "Table" in data:
-                AddMsgAndPrint("\tWarning! NATMUSYM value were not returned for any of the " + field + "  values.  Possibly OLD mukey values.",2)
+                AddMsgAndPrint("\tWarning! NATMUSYM value were not returned for any of the " + sourceField + "  values.  Possibly OLD mukey values.",2)
                 continue
 
             # Add the mukey:natmusym Values to the master dictionary
@@ -334,43 +317,67 @@ def getNATMUSYM(listsOfValues, featureLayer):
                 natmusymDict[pair[0]] = (pair[1],pair[2])
 
             del jData,req,resp,jsonString,data
+            arcpy.SetProgressorPosition()
+
+        arcpy.ResetProgressor()
+
+##        print "With Areassymbol: # of unique values: " + str(len(natmusymDict))
+##        sys.exit()
 
 ##        # Remove the first 2 items from dataList: fields and column metadata-columninfo
 ##        """ [[u'753571', u'2tjpl'], [u'753574', u'2szdz'], [u'2809844', u'2v3f0']] """
 ##        columnNames = dataList.pop(0)  # [u'mukey', u'natmusym']
 ##        columnInfo = dataList.pop(0)
 
-        """ --------------------------------------  Check the number of mukeys submitted vs. natmusym values received -----------------------------"""
-        # Warn user about a discrepancy in mukey count
-        if iNumOfValues != len(natmusymDict):
-            AddMsgAndPrint("\tWarning! NATMUSYM value was not returned for the following " + splitThousands(len(valueList) - len(dataList)) + " MUKEYS", 1)
+##        """ --------------------------------------  Check the number of mukeys submitted vs. natmusym values received -----------------------------"""
+##        # Warn user about a discrepancy in mukey count
+##        if iNumOfValues != len(natmusymDict):
+##            AddMsgAndPrint("\tWarning! Values were not returned for " + splitThousands(len(valueList) - len(dataList)) + " MUKEYS", 1)
+##
+##            # subtract both lists to see which MUKEYS had no NATSYM
+##            iNoMatches = list(set(valueList) - set([f[0] for f in dataList]))
+##            AddMsgAndPrint("\n\t\t" + str(iNoMatches),2)
 
-            # subtract both lists to see which MUKEYS had no NATSYM
-            iNoMatches = list(set(valueList) - set([f[0] for f in dataList]))
-            AddMsgAndPrint("\n\t\t" + str(iNoMatches),2)
+        """ -----------------------------------------  Add NATMUSYM and MUNAME to the Feature Layer if not present -----------------------------------------"""
+        if not "muname" in [f.name.lower() for f in arcpy.ListFields(featureLayer)]:
+            arcpy.AddField_management(featureLayer,'MUNAME','TEXT','#','#',175,'Mapunit Name')
 
-        """ --------------------------------------------------  Add NATMUSYM to the Feature Layer ---------------------------------------------------"""
-        # Add the 'NATMUSYM' field to inputFeature if not present
         if not "natmusym" in [f.name.lower() for f in arcpy.ListFields(featureLayer)]:
             arcpy.AddField_management(featureLayer,'NATMUSYM','TEXT','#','#',23,'National MU Symbol')
 
         mukeyField = FindField(featureLayer,"MUKEY")
 
-        AddMsgAndPrint("\nImporting NATMUSYM Values",0)
-        arcpy.SetProgressor("step", "Importing NATMUSYM Values into " + os.path.basename(featureLayer) + " layer", 0, len(natmusymDict),1)
+        """ -----------------------------------------  Add MUKEY Attribute Index to the Feature Layer if not present -----------------------------------------"""
+        # Get list of indexes for the feature Layer
+        attrIndexes = arcpy.ListIndexes(featureLayer)
+        bMukeyIndex = False
+
+        for index in attrIndexes:
+            for field in index.fields:
+                if field.name == "MUKEY":
+                    bMukeyIndex = True
+
+        if not bMukeyIndex:
+            arcpy.AddIndex_management(featureLayer,mukeyField,mukeyField + "_Index")
+            AddMsgAndPrint("\nSuccessfully added an attribute index to " + mukeyField + " field",0)
+
+        """ ----------------------------------------- Import NATSYM and MUSYM values into Feature Layer by MUKEY -----------------------------------------"""
+        AddMsgAndPrint("\nImporting NATMUSYM and MUNAME values",0)
+        arcpy.SetProgressor("step", "Importing NATMUSYM  and Mapunit Name Values into " + os.path.basename(featureLayer) + " layer", 0, len(natmusymDict),1)
 
         # itereate through mukey,natmusym values and update the NATMUSYM field
         # [[u'753571', u'2tjpl'], [u'753574', u'2szdz'], [u'2809844', u'2v3f0']]
         for rec in natmusymDict:
 
-            mukey,natmusym = rec,natmusymDict[rec]
-            arcpy.SetProgressorLabel("Importing NATMUSYM Values: " + mukey + " : " + natmusym)
+            mukey,natmusym,muname = rec,natmusymDict[rec][0],natmusymDict[rec][1]
+            arcpy.SetProgressorLabel("Importing Values: " + mukey + " : " + natmusym + "--" + muname)
 
             expression = arcpy.AddFieldDelimiters(featureLayer,mukeyField) + " = '" + mukey + "'"
-            with arcpy.da.UpdateCursor(featureLayer, 'NATMUSYM', where_clause=expression) as cursor:
+            with arcpy.da.UpdateCursor(featureLayer, ['NATMUSYM','MUNAME'], where_clause=expression) as cursor:
 
                 for row in cursor:
                     row[0] = natmusym
+                    row[1] = muname
 
                     cursor.updateRow(row)
 
@@ -378,7 +385,11 @@ def getNATMUSYM(listsOfValues, featureLayer):
 
         arcpy.ResetProgressor()
 
-        AddMsgAndPrint("\tSuccessfully populated 'NATMUSYM' values for " + splitThousands(int(arcpy.GetCount_management(featureLayer).getOutput(0))) + " polygons \n",0)
+        AddMsgAndPrint("\tSuccessfully populated 'NATMUSYM' and 'MUNAME' values for " + splitThousands(int(arcpy.GetCount_management(featureLayer).getOutput(0))) + " polygons \n",0)
+
+        if bAreaSym:
+            AddMsgAndPrint("\tThere are " + splitThousands(len(natmusymDict))+ " unique mapunits")
+
         return True
 
     except urllib2.HTTPError:
@@ -398,28 +409,79 @@ from arcpy import env
 
 if __name__ == '__main__':
 
-    inputFeature = arcpy.GetParameterAsText(0)
-    #inputFeature = r'C:\Temp\Export_Output.shp'
-
     try:
-        try:
-            FindField(theInput,"AREASYMBOL")
-            field = "AREASYMBOL"
-            bAreaSym = True
-        except:
-            try:
-                FindField(theInput,"MUKEY")
-                field = "MUKEY"
-                bAreaSym = False
-            except:
-                AddMsgAndPrint("\t\"AREASYMBOL\" and \"MUKEY\" fields are missing! -- Need one or the other to continue.  EXITING!",2)
+        inputFeature = arcpy.GetParameterAsText(0)
+        #inputFeature = r'F:\MLRA_Workspace_Onalaska\MLRAGeodata\soils\SSURGO_MLRA.gdb\MUPOLYGON2'
+
+        bFGDBmapunit = False
+        bAreaSym = False
+        source = inputFeature
+
+        """ ------------------------------------ Describe Data to determine what the unique value will be comprised of ---------------------"""
+        theDesc = arcpy.Describe(inputFeature)
+        theDataType = theDesc.dataType
+        theElementType = theDesc.dataElementType
+
+        """ -------------------------- Input feature is a shapefile"""
+        if theElementType.lower().find('shapefile') > -1:
+
+            if FindField(inputFeature,"AREASYMBOL"):
+                sourceField = "AREASYMBOL"
+                bAreaSym = True
+
+                # MUKEY field must be present
+                if not FindField(inputFeature,"MUKEY"):
+                    AddMsgAndPrint("\n\"MUKEY\" field is missing from shapefile! -- Need one or the other to continue.  EXITING!",2)
+                    sys.exit()
+
+            elif FindField(inputFeature,"MUKEY"):
+                sourceField = "MUKEY"
+            else:
+                AddMsgAndPrint("\t\"AREASYMBOL\" and \"MUKEY\" fields are missing from shapefile! -- Need one or the other to continue.  EXITING!",2)
                 sys.exit()
 
-    	# Get list of unique mukeys for use in tabular request
-        uniqueValueList = GetUniqueValues(inputFeature,field)
+            """ ------------------------- Input feature is a feature class"""
+        elif theElementType.lower().find('featureclass') > -1:
 
-        # populate inputFeature with NATMUSYM
-        if not getNATMUSYM(uniqueValueList, inputFeature):
+            theFCpath = theDesc.catalogPath
+            theFGDBpath = theFCpath[:theFCpath.find(".gdb")+4]
+            arcpy.env.workspace = theFGDBpath
+
+            # Use AREASYMBOL if available
+            if FindField(inputFeature,"AREASYMBOL"):
+                sourceField = "AREASYMBOL"
+                bAreaSym = True
+
+                # MUKEY field must be present as well
+                if not FindField(inputFeature,"MUKEY"):
+                    AddMsgAndPrint("\t\"AREASYMBOL\" and \"MUKEY\" fields are missing from shapefile! -- Need one or the other to continue.  EXITING!",2)
+                    sys.exit()
+
+            # No AREASYMB0L was found - use mapunit table to collect MUKEYS
+            elif arcpy.ListTables("mapunit", "ALL"):
+                bFGDBmapunit = True
+                source = theFGDBpath + os.sep + "mapunit"
+                sourceField = "MUKEY"
+                bFGDBmapunit = True
+
+            # mapunit table was not found - collect MUKEYS from input feature
+            elif FindField(inputFeature,"MUKEY"):
+                sourceField = "MUKEY"
+            else:
+                AddMsgAndPrint("\t\"AREASYMBOL\" and \"MUKEY\" fields are missing from feature class! -- Need one or the other to continue.  EXITING!",2)
+                sys.exit()
+
+        # Input Feature data type not recognized
+        else:
+            AddMsgAndPrint("\nUnknown data type: " + theDataType.lower(),2)
+            sys.exit()
+
+    	""" ------------------------------------  Get list of unique values from the specified source  ------------------------------------"""
+        uniqueValueList = GetUniqueValues(source,sourceField)
+
+        """ ------------------------------------  populate inputFeature with NATMUSYM ------------------------------------"""
+        if not getNATMUSYM(uniqueValueList,inputFeature):
             AddMsgAndPrint("\nFailed to update NATSYM field",2)
 
     except:
+        errorMsg()
