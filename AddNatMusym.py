@@ -1,4 +1,4 @@
-#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------
 # Name:        Insert NATSYM and MUNAME Value
 #              Insert the National Mapunit Symbol and Mapunit Name to feature layer
 #
@@ -7,21 +7,36 @@
 # phone: 608.662.4422 ext. 216
 #
 # Created:     2/21/2017
-# Last Modified: 4/7/2017
+# Last Modified: 4/11/2017
 
-# Code copied from SDA_CustomQuery script and modified to get NationalMusym from Soil Data Access
-# Steve Peaslee 10-18-2016
-
-# Completely modified by Adolfo Diaz 02/21/2017 to update a user specific feature layer.
-# Due to limitations from SDMaccess in terms of the number of mukeys it can accept the total
-# number of mukeys need to be split into lists of no more than 1000 mukeys.
+# This tool will add the NASIS National Mapunti Symbol (NATSYM) and the SSURGO Mapunit
+# Name (muname) to a user-provided spatial layer.  The NATSYM and MUNAME values are
+# derived from Soil Data Access (SDA) using a couple of custom SQL queries written by
+# Jason Nemecek, WI State Soil Scientist.  The query that is used depends on the fields
+# in the input spatial layer.  The MUKEY field must be present.
 #
+# In order to receive NATSYM and MUNAME values from SDA, it must be first be determined
+# what fields are available.  If both AREASYMBOL and MUKEY are available then the following
+# SQL query will be used:
+#
+#       'SELECT mapunit.mukey, nationalmusym, muname '\
+#       'FROM sacatalog ' \
+#       'INNER JOIN legend ON legend.areasymbol = sacatalog.areasymbol AND sacatalog.areasymbol IN (' + values + ')' \
+#       'INNER JOIN mapunit ON mapunit.lkey = legend.lkey'
+#
+# If only MUKEY is available then the following SQL query will be used:
+#       SELECT m.mukey, m.nationalmusym, m.muname as natmusym from mapunit m where mukey in (" + values + ")
+#
+# Both queries return: ['mukey', 'natmusym','muname']
+#
+# The tool will handle Shapefiles and Geodatabase feature classes.
 
 ## ===================================================================================
 def AddMsgAndPrint(msg, severity=0):
-    # prints message to screen if run as a python script
-    # Adds tool message to the geoprocessor
-    #
+    """prints messages to screen if the script is executed as
+       a standalone script.  Otherwise, Adds tool message to the
+       window geoprocessor.  Messages are color coded by severity."""
+
     #Split the message on \n first, so that if it's multiple lines, a GPMessage will be added for each line
     try:
         print msg
@@ -42,6 +57,7 @@ def AddMsgAndPrint(msg, severity=0):
 
 ## ================================================================================================================
 def errorMsg():
+    """ Uses the traceback module to print the last known error message"""
 
     try:
         exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -66,9 +82,9 @@ def splitThousands(someNumber):
 
 ## ================================================================================================================
 def FindField(layer,chkField):
-    # Check table or featureclass to see if specified field exists
-    # If fully qualified name is found, return that name; otherwise return ""
-    # Set workspace before calling FindField
+    """ Check table or featureclass to see if specified field exists
+        If fully qualified name is found, return that name; otherwise return False
+        Set workspace before calling FindField"""
 
     try:
 
@@ -106,8 +122,10 @@ def GetUniqueValues(theInput,theField):
     try:
         featureCount = int(arcpy.GetCount_management(theInput).getOutput(0))
 
-        if bFGDBmapunit:
-            AddMsgAndPrint("\nCompiling a list of unique " + theField + " values from " + splitThousands(featureCount) + " polygons using Mapunit Table")
+        if bFGDBsapolygon:
+            AddMsgAndPrint("\nCompiling a list of unique " + theField + " values from " + splitThousands(featureCount) + " polygons using SAPOLYGON feature class")
+        elif bFGDBmapunit:
+            AddMsgAndPrint("\nCompiling a list of unique " + theField + " values from " + splitThousands(featureCount) + " polygons using mapunit table")
         else:
             AddMsgAndPrint("\nCompiling a list of unique " + theField + " values from " + splitThousands(featureCount) + " polygons")
 
@@ -309,7 +327,7 @@ def getNATMUSYM(listsOfValues, featureLayer):
 
             # Nothing was returned from SDaccess
             if not "Table" in data:
-                AddMsgAndPrint("\tWarning! NATMUSYM value were not returned for any of the " + sourceField + "  values.  Possibly OLD mukey values.",2)
+                AddMsgAndPrint("\tWarning! NATMUSYM values were not returned for any of the " + sourceField + "  values.  Possibly OLD mukey values.",2)
                 continue
 
             # Add the mukey:natmusym Values to the master dictionary
@@ -414,25 +432,26 @@ if __name__ == '__main__':
         #inputFeature = r'F:\MLRA_Workspace_Onalaska\MLRAGeodata\soils\SSURGO_MLRA.gdb\MUPOLYGON2'
 
         bFGDBmapunit = False
+        bFGDBsapolygon = False
         bAreaSym = False
         source = inputFeature
 
-        """ ------------------------------------ Describe Data to determine what the unique value will be comprised of ---------------------"""
+        """ ------------------------------------------- MUKEY field must be present ----------------------------------------------"""
+        if not FindField(inputFeature,"MUKEY"):
+            AddMsgAndPrint("\n\"MUKEY\" field is missing from input feature!  EXITING!",2)
+            sys.exit()
+
+        """ ------------------------------------ Describe Data to determine the source field of the unique values ---------------------"""
         theDesc = arcpy.Describe(inputFeature)
         theDataType = theDesc.dataType
         theElementType = theDesc.dataElementType
 
-        """ -------------------------- Input feature is a shapefile"""
+        """ ------------------------------------------------ Input feature is a shapefile"""
         if theElementType.lower().find('shapefile') > -1:
 
             if FindField(inputFeature,"AREASYMBOL"):
                 sourceField = "AREASYMBOL"
                 bAreaSym = True
-
-                # MUKEY field must be present
-                if not FindField(inputFeature,"MUKEY"):
-                    AddMsgAndPrint("\n\"MUKEY\" field is missing from shapefile! -- Need one or the other to continue.  EXITING!",2)
-                    sys.exit()
 
             elif FindField(inputFeature,"MUKEY"):
                 sourceField = "MUKEY"
@@ -440,31 +459,42 @@ if __name__ == '__main__':
                 AddMsgAndPrint("\t\"AREASYMBOL\" and \"MUKEY\" fields are missing from shapefile! -- Need one or the other to continue.  EXITING!",2)
                 sys.exit()
 
-            """ ------------------------- Input feature is a feature class"""
+            """ ---------------------------------------------- Input feature is a feature class"""
         elif theElementType.lower().find('featureclass') > -1:
 
             theFCpath = theDesc.catalogPath
             theFGDBpath = theFCpath[:theFCpath.find(".gdb")+4]
             arcpy.env.workspace = theFGDBpath
 
-            # Use AREASYMBOL if available
-            if FindField(inputFeature,"AREASYMBOL"):
+            # -------------------------------------- Use AREASYMBOL if available
+            # summarize areasymbols from SAPOLYGON layer first.
+            # This is the fastest method since it is the records
+            if arcpy.ListFeatureClasses("SAPOLYGON", "Polygon"):
+                bFGDBsapolygon = True
+                source = theFGDBpath + os.sep + "SAPOLYGON"
                 sourceField = "AREASYMBOL"
                 bAreaSym = True
 
-                # MUKEY field must be present as well
-                if not FindField(inputFeature,"MUKEY"):
-                    AddMsgAndPrint("\t\"AREASYMBOL\" and \"MUKEY\" fields are missing from shapefile! -- Need one or the other to continue.  EXITING!",2)
-                    sys.exit()
+            # summarize AREASYMBOL from input feature class.
+            # this method is the same as summarizing by MUKEY
+            # but still preferred over MUKEY b/c of fewer
+            # requests to SDA
+            elif FindField(inputFeature,"AREASYMBOL"):
+                sourceField = "AREASYMBOL"
+                bAreaSym = True
 
-            # No AREASYMB0L was found - use mapunit table to collect MUKEYS
+            # ----------------------------------------- Use MUKEYS
+            # Use mapunit table to collect MUKEYs.  This is
+            # preferred way to summarize MUKEYs b/c of fewer
+            # records.
             elif arcpy.ListTables("mapunit", "ALL"):
                 bFGDBmapunit = True
                 source = theFGDBpath + os.sep + "mapunit"
                 sourceField = "MUKEY"
                 bFGDBmapunit = True
 
-            # mapunit table was not found - collect MUKEYS from input feature
+            # mapunit table was not found - summarize MUKEYS from
+            # input feature.  Least Ideal since it is the slowest.
             elif FindField(inputFeature,"MUKEY"):
                 sourceField = "MUKEY"
             else:
@@ -476,10 +506,10 @@ if __name__ == '__main__':
             AddMsgAndPrint("\nUnknown data type: " + theDataType.lower(),2)
             sys.exit()
 
-    	""" ------------------------------------  Get list of unique values from the specified source  ------------------------------------"""
+    	""" -------------------------------  Get list of unique values from the specified source field  ---------------------------------"""
         uniqueValueList = GetUniqueValues(source,sourceField)
 
-        """ ------------------------------------  populate inputFeature with NATMUSYM ------------------------------------"""
+        """ --------------------------------- Populate input Feature with NATMUSYM and MUNAME values-------------------------------------"""
         if not getNATMUSYM(uniqueValueList,inputFeature):
             AddMsgAndPrint("\nFailed to update NATSYM field",2)
 
