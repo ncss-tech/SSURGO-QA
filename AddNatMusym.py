@@ -70,7 +70,7 @@ def errorMsg():
 
 ## ================================================================================================================
 def splitThousands(someNumber):
-    """ will determine where to put a thousands seperator if one is needed.
+    """ will determine where to put the thousand seperator if one is needed.
         Input is an integer.  Integer with or without thousands seperator is returned."""
 
     try:
@@ -117,11 +117,16 @@ def FindField(layer,chkField):
 
 ## ================================================================================================================
 def GetUniqueValues(theInput,theField):
-    # Create a list of unique values from spatial layer for use in SDA query
+    """ This function creates a list of unique values from theInput using theField as
+        the source field.  If the source field is AREASYMBOL than the list will be
+        parsed into lists not exceeding 300 AREASYMBOL values.  If the source field is
+        MUKEY than the list will be parsed into lists not exceeding 1000 MUKEY values.
+        This list will ultimately be passed over to an SDA query."""
 
     try:
         featureCount = int(arcpy.GetCount_management(theInput).getOutput(0))
 
+        # Inform the user of how the values are being compiled
         if bFGDBsapolygon:
             AddMsgAndPrint("\nCompiling a list of unique " + theField + " values from " + splitThousands(featureCount) + " polygons using SAPOLYGON feature class")
         elif bFGDBmapunit:
@@ -129,8 +134,10 @@ def GetUniqueValues(theInput,theField):
         else:
             AddMsgAndPrint("\nCompiling a list of unique " + theField + " values from " + splitThousands(featureCount) + " polygons")
 
+        # Unique value list
         valueList = list()
 
+        """ ----------------- Iterate through all of the records in theInput to make a unique list-------------------"""
         arcpy.SetProgressor("step", "Compiling a list of unique " + theField + " values", 0, featureCount,1)
         if featureCount:
 
@@ -160,7 +167,7 @@ def GetUniqueValues(theInput,theField):
 
         # if number of Areasymbols exceed 300 than parse areasymbols
         # into lists containing no more than 300 areasymbols
-        # if
+        # MUKEY no more than 1000 values
         if bAreaSym:
             return parseValuesIntoLists(valueList,300)
         else:
@@ -173,7 +180,7 @@ def GetUniqueValues(theInput,theField):
 
 ## ===============================================================================================================
 def parseValuesIntoLists(valueList,limit=1000):
-    """ This function will parse values into manageable chunks that will be sent to the SDaccess query.
+    """ This function will parse values into manageable chunks that will be sent to an SDaccess query.
         This function returns a list containing lists of values comprised of no more than what
         the 'limit' is set to. Default Limit set to 1000, this will be used if the value list is
         made up of MUKEYS.  Limit will be set to 300 if value list contains areasymbols"""
@@ -221,12 +228,12 @@ def parseValuesIntoLists(valueList,limit=1000):
 
 ## ===================================================================================
 def getNATMUSYM(listsOfValues, featureLayer):
-    """POST REST which uses urllib and JSON to send query to SDM Tabular Service and
+    """POST request which uses urllib and JSON to send query to SDM Tabular Service and
        returns data in JSON format.  Sends a list of values (either MUKEYs or Areasymbols)
-       and returns NATSYM values.  If MUKEYS are submitted a pair of values are returned
+       and returns NATSYM and MUNAME values.  If MUKEYS are submitted a pair of values are returned
        [MUKEY,NATMUSYM].  If areasymbols are submitted than a list of all of MUKEY,NATSYM
        pairs that pertain to that areasymbol are returned.
-       Adds NATMUSYM field to inputFeature layer if not present and populates."""
+       Adds NATMUSYM and MUNAME field to inputFeature layer if not present and populates."""
 
     try:
         AddMsgAndPrint("\nSubmitting " + str(len(listsOfValues)) + " request(s) to Soil Data Access")
@@ -251,16 +258,17 @@ def getNATMUSYM(listsOfValues, featureLayer):
             iRequestNum+=1
 
             # convert the list into a comma seperated string
-            #values = ",".join(valueList)
+            ## values = ",".join(valueList)
             values = str(valueList)[1:-1]
 
-            # use this query if submitting natsym request by areasymbol
+            # use this query if submitting request by AREASYMBOL
             if bAreaSym:
                 sQuery = 'SELECT mapunit.mukey, nationalmusym, muname '\
                           'FROM sacatalog ' \
                           'INNER JOIN legend ON legend.areasymbol = sacatalog.areasymbol AND sacatalog.areasymbol IN (' + values + ')' \
                           'INNER JOIN mapunit ON mapunit.lkey = legend.lkey'
 
+            # use this query if submitting request by MUKEY
             else:
                 sQuery = "SELECT m.mukey, m.nationalmusym, m.muname as natmusym from mapunit m where mukey in (" + values + ")"
                 #sQuery = "SELECT m.mukey, m.nationalmusym as natmusym from legend AS l INNER JOIN mapunit AS m ON l.lkey=m.mukey AND m.mukey in (" + mukeys + ")"
@@ -268,22 +276,26 @@ def getNATMUSYM(listsOfValues, featureLayer):
             # Create request using JSON, return data as JSON
             dRequest = dict()
             dRequest["FORMAT"] = "JSON"
-            #dRequest["FORMAT"] = "JSON+COLUMNNAME+METADATA"
+            ##dRequest["FORMAT"] = "JSON+COLUMNNAME+METADATA"
             dRequest["QUERY"] = sQuery
             jData = json.dumps(dRequest)
 
             # Send request to SDA Tabular service using urllib2 library
             req = urllib2.Request(URL, jData)
 
-            """ --------------------------------------  Try connecting to SDaccess to read JSON response - You get 3 tries ------------------------"""
+            """ --------------------------------------  Try connecting to SDaccess to read JSON response - You get 3 Attempts ------------------------"""
+            # ---------------------------- First Attempt
             try:
                 resp = urllib2.urlopen(req)
             except:
+
+                # ---------------------------- Second Attempt
                 try:
                     AddMsgAndPrint("\t2nd attempt at requesting data")
                     resp = urllib2.urlopen(req)
-
                 except:
+
+                    # ---------------------------- Last Attempt
                     try:
                         AddMsgAndPrint("\t3rd attempt at requesting data")
                         resp = urllib2.urlopen(req)
@@ -318,19 +330,20 @@ def getNATMUSYM(listsOfValues, featureLayer):
             jsonString = resp.read()
             data = json.loads(jsonString)
 
-            """{u'Table': [[u'mukey', u'natmusym',u'muname'],
+            """ Sample Output:
+                {u'Table': [[u'mukey', u'natmusym',u'muname'],
                         [u'ColumnOrdinal=0,ColumnSize=4,NumericPrecision=10,NumericScale=255,ProviderType=Int,IsLong=False,ProviderSpecificDataType=System.Data.SqlTypes.SqlInt32,DataTypeName=int',
                          u'ColumnOrdinal=1,ColumnSize=6,NumericPrecision=255,NumericScale=255,ProviderType=VarChar,IsLong=False,ProviderSpecificDataType=System.Data.SqlTypes.SqlString,DataTypeName=varchar'],
-                        [u'753571', u'2tjpl'],
-                        [u'753574', u'2szdz'],
-                        [u'2809844', u'2v3f0']]}"""
+                        [u'753571', u'2tjpl', u'Amery sandy loam, 6 to 12 percent slopes'],
+                        [u'753574', u'2szdz', u'Amery sandy loam, 1 to 6 percent slopes'],
+                        [u'2809844', u'2v3f0', u'Grayling sand, 12 to 30 percent slopes']]}"""
 
             # Nothing was returned from SDaccess
             if not "Table" in data:
                 AddMsgAndPrint("\tWarning! NATMUSYM values were not returned for any of the " + sourceField + "  values.  Possibly OLD mukey values.",2)
                 continue
 
-            # Add the mukey:natmusym Values to the master dictionary
+            # Add the mukey:natmusym,muname Values to the master dictionary
             for pair in data["Table"]:
                 natmusymDict[pair[0]] = (pair[1],pair[2])
 
@@ -383,7 +396,7 @@ def getNATMUSYM(listsOfValues, featureLayer):
         AddMsgAndPrint("\nImporting NATMUSYM and MUNAME values",0)
         arcpy.SetProgressor("step", "Importing NATMUSYM  and Mapunit Name Values into " + os.path.basename(featureLayer) + " layer", 0, len(natmusymDict),1)
 
-        # itereate through mukey,natmusym values and update the NATMUSYM field
+        # itereate through the natmusymDict values and update the NATMUSYM and MUNAME field
         # [[u'753571', u'2tjpl'], [u'753574', u'2szdz'], [u'2809844', u'2v3f0']]
         for rec in natmusymDict:
 
@@ -429,7 +442,6 @@ if __name__ == '__main__':
 
     try:
         inputFeature = arcpy.GetParameterAsText(0)
-        #inputFeature = r'F:\MLRA_Workspace_Onalaska\MLRAGeodata\soils\SSURGO_MLRA.gdb\MUPOLYGON2'
 
         bFGDBmapunit = False
         bFGDBsapolygon = False
@@ -441,13 +453,14 @@ if __name__ == '__main__':
             AddMsgAndPrint("\n\"MUKEY\" field is missing from input feature!  EXITING!",2)
             sys.exit()
 
-        """ ------------------------------------ Describe Data to determine the source field of the unique values ---------------------"""
+        """ -------------------------------- Describe Data to determine the source field of the unique values ---------------------"""
         theDesc = arcpy.Describe(inputFeature)
         theDataType = theDesc.dataType
+        theName = theDesc.name
         theElementType = theDesc.dataElementType
 
-        """ ------------------------------------------------ Input feature is a shapefile"""
-        if theElementType.lower().find('shapefile') > -1:
+        """ -------------------------------------------- Input feature is a Shapefile or Raster """
+        if theElementType.lower() in ('deshapefile','derasterdataset'):
 
             if FindField(inputFeature,"AREASYMBOL"):
                 sourceField = "AREASYMBOL"
@@ -456,10 +469,10 @@ if __name__ == '__main__':
             elif FindField(inputFeature,"MUKEY"):
                 sourceField = "MUKEY"
             else:
-                AddMsgAndPrint("\t\"AREASYMBOL\" and \"MUKEY\" fields are missing from shapefile! -- Need one or the other to continue.  EXITING!",2)
+                AddMsgAndPrint("\t\"AREASYMBOL\" and \"MUKEY\" fields are missing from " + theName  + " layer -- Need one or the other to continue.  EXITING!",2)
                 sys.exit()
 
-            """ ---------------------------------------------- Input feature is a feature class"""
+            """ ------------------------------------- Input feature is a feature class"""
         elif theElementType.lower().find('featureclass') > -1:
 
             theFCpath = theDesc.catalogPath
@@ -503,7 +516,7 @@ if __name__ == '__main__':
 
         # Input Feature data type not recognized
         else:
-            AddMsgAndPrint("\nUnknown data type: " + theDataType.lower(),2)
+            AddMsgAndPrint("\nInvalid data type: " + theDataType.lower(),2)
             sys.exit()
 
     	""" -------------------------------  Get list of unique values from the specified source field  ---------------------------------"""
