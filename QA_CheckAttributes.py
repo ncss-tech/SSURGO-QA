@@ -73,14 +73,16 @@ def CheckAreasymbols(asList):
         # Send request to SDA Tabular service using urllib2 library
         req = urllib2.Request(url, jData)
         resp = urllib2.urlopen(req)
-        jsonString = resp.read()      # {"Table":[["WI025","Dane County, Wisconsin","2016-09-27"]]}
+        jsonString = resp.read()      # {"Table":[["MT605"],["MT610"],["MT612"]]}
 
         # Convert the returned JSON string into a Python dictionary.
-        data = json.loads(jsonString)  # {u'Table': [[u'WI025', u'Dane County, Wisconsin', u'2016-09-27']]}
+        data = json.loads(jsonString)  # {u'Table': [[u'MT605'], [u'MT610'], [u'MT612']]}
 
         valList = list()
-        valList.append(data['Table'][0][0])
+        #valList.append(data['Table'][0][0])
 
+        for areaSym in data.get('Table'):
+            valList.append(areaSym[0])
 
         """ ---------------------------------------------- This is the Original SOAP request to the SDMAccess; Replaced by a POST REST request -------------------------------------------------"""
 ##        # Send XML query to SDM Access service
@@ -138,12 +140,12 @@ def CheckAreasymbols(asList):
 
             else:
                 # Number of areasymbols match, should be good
-                PrintMsg(" \nAll areasymbol values in spatial data have a match in Web Soil Survey", 0)
+                PrintMsg("\tAll areasymbol values in spatial data have a match in Web Soil Survey", 0)
                 return True
 
         else:
             # Failed to find a match for any surveys
-            PrintMsg(" \nFailed to find a match for any of the input Areasymbols", 2)
+            PrintMsg("\nFailed to find a match for any of the input Areasymbols", 2)
             return False
 
     except:
@@ -173,10 +175,11 @@ def ProcessLayer(inLayer, inFields, bValidate):
         validText = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
         validNum = "0123456789"
         validMusym = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-+._"
-        fieldList = ["OID@"]
+        fieldList = ["OID@","AREASYMBOL"]
 
         for fld in inFields:
-            fieldList.append(fld.value.upper())
+            if fld not in fieldList:
+                fieldList.append(fld.value.upper())
 
         polygonList = list()
         asList = list()
