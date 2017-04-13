@@ -132,7 +132,8 @@ def CheckAreasymbols(asList):
             # Loop through and compare to the original list from the spatial
             if len(asList) > len(valList):
                 # Incomplete match, look at each to find the problem(s)
-                PrintMsg("Areasymbols with no match in Web Soil Survey: " + ", ".join(asList), 2)
+                missingList = [x for x in asList if not x in valList]
+                PrintMsg("\n\tAreasymbols with no match in Web Soil Survey: " + ", ".join(missingList), 1)
                 return False
 
             else:

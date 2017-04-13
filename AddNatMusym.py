@@ -132,7 +132,7 @@ def GetUniqueValues(theInput,theField):
         elif bFGDBmapunit:
             AddMsgAndPrint("\nCompiling a list of unique " + theField + " values from " + splitThousands(featureCount) + " polygons using mapunit table")
         else:
-            AddMsgAndPrint("\nCompiling a list of unique " + theField + " values from " + splitThousands(featureCount) + " polygons")
+            AddMsgAndPrint("\nCompiling a list of unique " + theField + " values from " + splitThousands(featureCount) + " records")
 
         # Unique value list
         valueList = list()
@@ -352,24 +352,8 @@ def getNATMUSYM(listsOfValues, featureLayer):
 
         arcpy.ResetProgressor()
 
-##        print "With Areassymbol: # of unique values: " + str(len(natmusymDict))
-##        sys.exit()
-
-##        # Remove the first 2 items from dataList: fields and column metadata-columninfo
-##        """ [[u'753571', u'2tjpl'], [u'753574', u'2szdz'], [u'2809844', u'2v3f0']] """
-##        columnNames = dataList.pop(0)  # [u'mukey', u'natmusym']
-##        columnInfo = dataList.pop(0)
-
-##        """ --------------------------------------  Check the number of mukeys submitted vs. natmusym values received -----------------------------"""
-##        # Warn user about a discrepancy in mukey count
-##        if iNumOfValues != len(natmusymDict):
-##            AddMsgAndPrint("\tWarning! Values were not returned for " + splitThousands(len(valueList) - len(dataList)) + " MUKEYS", 1)
-##
-##            # subtract both lists to see which MUKEYS had no NATSYM
-##            iNoMatches = list(set(valueList) - set([f[0] for f in dataList]))
-##            AddMsgAndPrint("\n\t\t" + str(iNoMatches),2)
-
         """ -----------------------------------------  Add NATMUSYM and MUNAME to the Feature Layer if not present -----------------------------------------"""
+        arcpy.SetProgressorLabel("Adding NATSYM and MUNAME fields if they don't exist")
         if not "muname" in [f.name.lower() for f in arcpy.ListFields(featureLayer)]:
             arcpy.AddField_management(featureLayer,'MUNAME','TEXT','#','#',175,'Mapunit Name')
 
@@ -379,44 +363,53 @@ def getNATMUSYM(listsOfValues, featureLayer):
         mukeyField = FindField(featureLayer,"MUKEY")
 
         """ -----------------------------------------  Add MUKEY Attribute Index to the Feature Layer if not present -----------------------------------------"""
-        # Get list of indexes for the feature Layer
-        attrIndexes = arcpy.ListIndexes(featureLayer)
-        bMukeyIndex = False
-
-        for index in attrIndexes:
-            for field in index.fields:
-                if field.name == "MUKEY":
-                    bMukeyIndex = True
-
-        if not bMukeyIndex:
-            arcpy.AddIndex_management(featureLayer,mukeyField,mukeyField + "_Index")
-            AddMsgAndPrint("\nSuccessfully added an attribute index to " + mukeyField + " field",0)
+##        # Get list of indexes for the feature Layer
+##        attrIndexes = arcpy.ListIndexes(featureLayer)
+##        bMukeyIndex = False
+##
+##        for index in attrIndexes:
+##            for field in index.fields:
+##                if field.name == "MUKEY":
+##                    bMukeyIndex = True
+##
+##        if not bMukeyIndex:
+##            arcpy.AddIndex_management(featureLayer,mukeyField,mukeyField + "_Index")
+##            AddMsgAndPrint("\nSuccessfully added an attribute index to " + mukeyField + " field",0)
 
         """ ----------------------------------------- Import NATSYM and MUSYM values into Feature Layer by MUKEY -----------------------------------------"""
+        arcpy.SetProgressorLabel("Importing NATMUSYM and MUNAME values")
         AddMsgAndPrint("\nImporting NATMUSYM and MUNAME values",0)
-        arcpy.SetProgressor("step", "Importing NATMUSYM  and Mapunit Name Values into " + os.path.basename(featureLayer) + " layer", 0, len(natmusymDict),1)
+        featureCount = int(arcpy.GetCount_management(featureLayer).getOutput(0))
+        arcpy.SetProgressor("step", "Importing NATMUSYM  and Mapunit Name Values into " + os.path.basename(featureLayer) + " layer", 0, featureCount,1)
 
-        # itereate through the natmusymDict values and update the NATMUSYM and MUNAME field
-        # [[u'753571', u'2tjpl'], [u'753574', u'2szdz'], [u'2809844', u'2v3f0']]
-        for rec in natmusymDict:
+        """ itereate through the feature records and update the NATMUSYM and MUNAME field
+            {'2809844': ('2v3f0', 'Grayling sand, 12 to 30 percent slopes'),
+             '753571': ('2tjpl', 'Amery sandy loam, 6 to 12 percent slopes'),
+             '753574': ('2szdz', 'Amery sandy loam, 1 to 6 percent slopes')}"""
 
-            mukey,natmusym,muname = rec,natmusymDict[rec][0],natmusymDict[rec][1]
-            arcpy.SetProgressorLabel("Importing Values: " + mukey + " : " + natmusym + "--" + muname)
+        with arcpy.da.UpdateCursor(featureLayer, [mukeyField,'NATMUSYM','MUNAME']) as cursor:
 
-            expression = arcpy.AddFieldDelimiters(featureLayer,mukeyField) + " = '" + mukey + "'"
-            with arcpy.da.UpdateCursor(featureLayer, ['NATMUSYM','MUNAME'], where_clause=expression) as cursor:
+            for row in cursor:
 
-                for row in cursor:
-                    row[0] = natmusym
-                    row[1] = muname
+                uNatmusym = natmusymDict.get(row[0])[0]
+                uMuName = natmusymDict.get(row[0])[1]
+                arcpy.SetProgressorLabel("Importing Values: " + row[0] + " : " + uNatmusym + "--" + uMuName)
 
+                try:
+                    row[1] = uNatmusym
+                    row[2] = uMuName
                     cursor.updateRow(row)
 
-            arcpy.SetProgressorPosition()
+                    del uNatmusym,uMuName
+                    arcpy.SetProgressorPosition()
+
+                except:
+                    AddMsgAndPrint("\tInvalid MUKEY: " + row[0],2)
+                    continue
 
         arcpy.ResetProgressor()
 
-        AddMsgAndPrint("\tSuccessfully populated 'NATMUSYM' and 'MUNAME' values for " + splitThousands(int(arcpy.GetCount_management(featureLayer).getOutput(0))) + " polygons \n",0)
+        AddMsgAndPrint("\tSuccessfully populated 'NATMUSYM' and 'MUNAME' values for " + splitThousands(featureCount) + " records \n",0)
 
         if bAreaSym:
             AddMsgAndPrint("\tThere are " + splitThousands(len(natmusymDict))+ " unique mapunits")
