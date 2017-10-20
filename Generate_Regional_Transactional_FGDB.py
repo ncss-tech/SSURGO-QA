@@ -412,26 +412,12 @@ def compareDatum(fc):
 
         # Input datum is either WGS84 or NAD83; return true
         if fc_datum == WGS84_datum or fc_datum == NAD83_datum:
-            del fcSpatialRef
-            del FCdatum_start
-            del FCdatum_stop
-            del fc_datum
-            del WGS84_sr
-            del WGS84_datum
-            del NAD83_datum
-
+            del fcSpatialRef, FCdatum_start, FCdatum_stop,fc_datum,WGS84_sr,WGS84_datum,NAD83_datum
             return True
 
         # Input Datum is some other Datum; return false
         else:
-            del fcSpatialRef
-            del FCdatum_start
-            del FCdatum_stop
-            del fc_datum
-            del WGS84_sr
-            del WGS84_datum
-            del NAD83_datum
-
+            del fcSpatialRef, FCdatum_start, FCdatum_stop,fc_datum,WGS84_sr,WGS84_datum,NAD83_datum
             return False
 
     except arcpy.ExecuteError:
@@ -679,423 +665,458 @@ def updateAliasNames(regionChoice,fdPath):
         print_exception()
         return False
 
+## ===============================================================================================================
+def addAttributeIndex(table,fieldList,verbose=True):
+# Attribute indexes can speed up attribute queries on feature classes and tables.
+# This function adds an attribute index(es) for the fields passed to the table that
+# is passed in. This function takes in 2 parameters:
+#   1) Table - full path to an existing table or feature class
+#   2) List of fields that exist in table
+# This function will make sure an existing index is not associated with that field.
+# Does not return anything.
+
+    try:
+        # Make sure table exists. - Just in case
+        if not arcpy.Exists(table):
+            AddMsgAndPrint("\tAttribute index cannot be created for: " + os.path.basename(table) + " TABLE DOES NOT EXIST",2)
+            return False
+
+        # iterate through every field
+        for fieldToIndex in fieldList:
+
+            # Make sure field exists in table - Just in case
+            if not len(arcpy.ListFields(table,"*" + fieldToIndex))>0:
+                AddMsgAndPrint("\tAttribute index cannot be created for: " + fieldToIndex + ". FIELD DOES NOT EXIST",2)
+                continue
+
+            # list of indexes (attribute and spatial) within the table that are
+            # associated with the field or a field that has the field name in it.
+            # Important to inspect all associated fields b/c they could be using
+            # a differently named index
+            existingIndexes = arcpy.ListIndexes(table,"*" + fieldToIndex)
+            bFieldIndexExists = False
+
+            # check existing indexes to see if fieldToIndex is already associated
+            # with an index
+            if existingIndexes > 0:
+
+                # iterate through the existing indexes looking for a field match
+                for index in existingIndexes:
+                    associatedFlds = index.fields
+
+                    # iterate through the fields associated with existing index.
+                    # Should only be 1 field since multiple fields are not allowed
+                    # in a single FGDB.
+                    for fld in associatedFlds:
+
+                        # Field is already part of an existing index - Notify User
+                        if fld.name == fieldToIndex:
+                            AddMsgAndPrint("\tAttribute Index for " + fieldToIndex + " field already exists",1)
+                            bFieldIndexExists = True
+
+                    # Field is already part of an existing index - Proceed to next field
+                    if bFieldIndexExists:
+                        break
+
+            # Attribute field index does not exist.  Add one.
+            if not bFieldIndexExists:
+                newIndex = "IDX_" + fieldToIndex
+
+                # UNIQUE setting is not used in FGDBs - comment out
+                arcpy.AddIndex_management(table,fieldToIndex,newIndex,"#","ASCENDING")
+
+                if verbose:
+                    AddMsgAndPrint("\tSuccessfully added attribute index for " + fieldToIndex)
+
+    except:
+        print_exception()
+        return False
+
 ## ====================================== Main Body ===========================================================
 # Import modules
 import arcpy, sys, string, os, time, datetime, re, traceback, csv
 from arcpy import env
 from datetime import datetime
 
-# ---------------------------------------------------------------------------------------Input Arguments
-#
-# Parameter # 1: (Required) Name of new file geodatabase to create
-regionChoice = arcpy.GetParameterAsText(0)  # User selects what region to create MRSD
-#regionChoice = "Region 13"
+if __name__ == '__main__':
 
-# Parameter # 2: (Required) Input Directory where the new FGDB will be created.
-outputFolder = arcpy.GetParameterAsText(1)
-#outputFolder = r'C:\Temp\export'
+    # ---------------------------------------------------------------------------------------Input Arguments
+    # Parameter # 1: (Required) Name of new file geodatabase to create
+    regionChoice = arcpy.GetParameterAsText(0)  # User selects what region to create MRSD
+    #regionChoice = "Region 13"
 
-# Parameter # 2: (Required) Input Directory where the original SDM spatial and tabular data exist.
-wssLibrary = arcpy.GetParameterAsText(2)
-#wssLibrary = r'K:\FY2014_SSURGO_R10_download'
+    # Parameter # 2: (Required) Input Directory where the new FGDB will be created.
+    outputFolder = arcpy.GetParameterAsText(1)
+    #outputFolder = r'C:\Temp\export'
 
-# Path to the Master Regional table that contains SSAs by region with extra extent
-#regionalTable = os.path.dirname(sys.argv[0]) + os.sep + "SSURGO_Soil_Survey_Area.gdb\junkTable"
-regionalTable = os.path.join(os.path.join(os.path.dirname(sys.argv[0]),"SSURGO_Soil_Survey_Area.gdb"),"SSA_Regional_Ownership_MASTER")
+    # Parameter # 2: (Required) Input Directory where the original SDM spatial and tabular data exist.
+    wssLibrary = arcpy.GetParameterAsText(2)
+    #wssLibrary = r'K:\FY2014_SSURGO_R10_download'
 
-# Bail if reginal master table is not found
-if not arcpy.Exists(regionalTable):
-    raise MyError, "\n" + "Regional Master Table is missing from " + os.path.dirname(sys.argv[0])
+    # Path to the Master Regional table that contains SSAs by region with extra extent
+    #regionalTable = os.path.dirname(sys.argv[0]) + os.sep + "SSURGO_Soil_Survey_Area.gdb\junkTable"
+    regionalTable = os.path.join(os.path.join(os.path.dirname(sys.argv[0]),"SSURGO_Soil_Survey_Area.gdb"),"SSA_Regional_Ownership_MASTER")
 
-startTime = datetime.now()
-env.overwriteOutput = True
+    # Bail if reginal master table is not found
+    if not arcpy.Exists(regionalTable):
+        raise MyError, "\n" + "Regional Master Table is missing from " + os.path.dirname(sys.argv[0])
 
-# The entire Main code in a try statement....Let the fun begin!
-try:
+    startTime = datetime.now()
+    env.overwriteOutput = True
 
-    # Get a list of Regional areasymbols to download from the Regional Master Table.  [u'WI001, u'WI003']
-    regionalASlist = getRegionalAreaSymbolList(regionalTable,regionChoice)
-
-    # Exit if list of regional areasymbol list is empty
-    if not len(regionalASlist) > 0:
-        raise MyError, "\n\n" + "No Areasymbols were selected from Regional SSA Ownership table. Possible problem with table.....EXITING"
-
-    # sort the regional list
-    regionalASlist.sort()
-
-    # check for missing Regional SSURGO Datasets or duplicates; Exit if any are found
-    AddMsgAndPrint("\n" + "Validating local Regional SSURGO datasets.......",0)
-    ssurgoDatasetDict = validateSSAs(regionalASlist,wssLibrary)
-
-    if len(ssurgoDatasetDict) < 1:
-        raise MyError, "\nAll " + regionChoice + " SSURGO datasets are missing from " + os.path.basename(wssLibrary) + " directory \n\tThere must also not be duplicate SSURGO datasets"
-
-    # There are some SSAs missing from local library
-    elif len(regionalASlist) != len(ssurgoDatasetDict):
-        AddMsgAndPrint("\n" + regionChoice + " is assigned " + str(len(regionalASlist)) + " SSAs --- Missing " + str(len(regionalASlist) - len(ssurgoDatasetDict)) + " SSAs" ,2)
-        AddMsgAndPrint("\nALL SSURGO datasets assigned to " + regionChoice + " must be present to continue",2)
-        raise MyError, "Download missing SSURGO Datasets using the 'Download SSURGO by Region' tool"
-        #AddMsgAndPrint("Only " + str(len(ssurgoDatasetDict)) + " out of " + str(len(regionalASlist)) + " surveys will be imported to create the " + regionChoice + " Transactional Spatial Database",2)
-
-    else:
-        AddMsgAndPrint("\n" + str(len(regionalASlist)) + " surveys will be merged to create the " + regionChoice + " Transactional Spatial Database", 0)
-
-    # --------------------------------------------------------------------------------------Create Empty Regional Transactional File Geodatabase
-    RTSDname = createFGDB(regionChoice, outputFolder)
-
-    if RTSDname == "":
-        raise MyError, " \n Failed to Initiate Empty Regional Transactional Database.  Error in createFGDB() function. Exiting!"
-
-    # Path to Regional FGDB
-    FGDBpath = os.path.join(outputFolder,RTSDname)
-
-    # Path to feature dataset that contains SSURGO feature classes
-    FDpath = os.path.join(FGDBpath,"FD_RTSD")
-
-    # SSURGO layer Name
-    soilFC = "MUPOLYGON"
-    muLineFC = "MULINE"
-    muPointFC = "MUPOINT"
-    soilSaFC = "SAPOLYGON"
-    featPointFC = "FEATPOINT"
-    featLineFC = "FEATLINE"
-
-    # Set environment variables
-    env.workspace = FDpath
-
-    # Parse Datum from MUPOLYGON; can only get datum from a GCS not a projected CS
-    spatialRef = str(arcpy.CreateSpatialReference_management("#",soilFC,"#","#","#","#"))
-
-    userDatum_Start = spatialRef.find("DATUM") + 7
-    userDatum_Stop = spatialRef.find(",", userDatum_Start) - 1
-    userDatum = spatialRef[userDatum_Start:userDatum_Stop]
-
-    AddMsgAndPrint(" \tOutput Coordinate System: " + arcpy.Describe(soilFC).spatialReference.name,0)
-    AddMsgAndPrint(" \tOutput Datum: " + userDatum,0)
-
-    if userDatum == "D_North_American_1983":
-        AddMsgAndPrint(" \tGeographic Transformation: WGS_1984_(ITRF00)_To_NAD_1983",0 )
-
-    env.geographicTransformations = "WGS_1984_(ITRF00)_To_NAD_1983"  # WKID 108190
-    env.outputCoordinateSystem = spatialRef
-
-    arcpy.SetProgressorLabel("Gathering information about Soil Survey datasets...")
-
-    # ------------------------------------------------------------------------------------- Establish Dictionaries, lists and Fieldmappings
-    # Dictionary containing approx center of SSA (key) and the SSURGO layer path (value)
-    soilShpDict = dict()   # {-4002.988250799742: 'K:\\FY2014_SSURGO_R10_download\\soil_wi063\\spatial\\soilmu_a_wi063.shp'}
-    muLineShpDict = dict()
-    muPointShpDict = dict()
-    soilSaShpDict = dict()
-    featPointShpDict = dict()
-    featLineShpDict = dict()
-
-    # lists containing SSURGO layer paths sorted according to the survey center key
-    # This list will be passed over to the Merge command
-    soilShpList = list()
-    muLineShpList = list()
-    muPointShpList = list()
-    soilSaShpList = list()
-    featPointShpList = list()
-    featLineShpList = list()
-
-    # Create FieldMappings objects that will contain all of the fields from each survey
-    # (fieldmap).  FMs will be used to remove every field but AREASYMBOL, FEATSYM, MUSYM
-    soilsFM = arcpy.FieldMappings()
-    muLineFM = arcpy.FieldMappings()
-    muPointFM = arcpy.FieldMappings()
-    soilSaFM = arcpy.FieldMappings()
-    featPointFM = arcpy.FieldMappings()
-    featLineFM = arcpy.FieldMappings()
-
-    # list containing the (Xcenter * Ycenter) for every SSURGO soil layer
-    extentList = list()
-
-    # ------------------------------------------------------------------------------------- Populate Dictionaries, lists and Fieldmappings
-    for SSA in ssurgoDatasetDict:
-
-        # Paths to individual SSURGO layers
-        soilShpPath = os.path.join(os.path.join(ssurgoDatasetDict[SSA],"spatial"),"soilmu_a_" + SSA.lower() + ".shp")
-        muLineShpPath = os.path.join(os.path.join(ssurgoDatasetDict[SSA],"spatial"),"soilmu_l_" + SSA.lower() + ".shp")
-        muPointShpPath = os.path.join(os.path.join(ssurgoDatasetDict[SSA],"spatial"),"soilmu_p_" + SSA.lower() + ".shp")
-        soilSaShpPath = os.path.join(os.path.join(ssurgoDatasetDict[SSA],"spatial"),"soilsa_a_" + SSA.lower() + ".shp")
-        featPointShpPath = os.path.join(os.path.join(ssurgoDatasetDict[SSA],"spatial"),"soilsf_p_" + SSA.lower() + ".shp")
-        featLineShpPath = os.path.join(os.path.join(ssurgoDatasetDict[SSA],"spatial"),"soilsf_l_" + SSA.lower() + ".shp")
-
-        # Calculate the approximate center of a given survey
-        desc = arcpy.Describe(soilShpPath)
-        shpExtent = desc.extent
-        XCntr = (shpExtent.XMin + shpExtent.XMax) / 2.0
-        YCntr = (shpExtent.YMin + shpExtent.YMax) / 2.0
-        surveyCenter = XCntr * YCntr  # approximate center of survey
-
-        # Assign {-4002.988250799742: 'K:\\FY2014_SSURGO_R10_download\\soil_wi063\\spatial\\soilmu_a_wi063.shp'}
-        soilShpDict[surveyCenter] = soilShpPath
-        muLineShpDict[surveyCenter] = muLineShpPath
-        muPointShpDict[surveyCenter] = muPointShpPath
-        soilSaShpDict[surveyCenter] = soilSaShpPath
-        featPointShpDict[surveyCenter] = featPointShpPath
-        featLineShpDict[surveyCenter] = featLineShpPath
-
-        extentList.append(surveyCenter)
-
-        # Add all fields from all of the SSURGO layers into their respective fieldMappings
-        soilsFM.addTable(soilShpPath)
-        muLineFM.addTable(muLineShpPath)
-        muPointFM.addTable(muPointShpPath)
-        soilSaFM.addTable(soilSaShpPath)
-        featPointFM.addTable(featPointShpPath)
-        featLineFM.addTable(featLineShpPath)
-
-        del soilShpPath, muLineShpPath, muPointShpPath, soilSaShpPath, featPointShpPath, featLineShpPath, desc, shpExtent, XCntr, YCntr, surveyCenter
-
-    # ---------------------------------------------------------------------------------------------------------- Begin the Merge Process
-    # Sort shapefiles by extent so that the drawing order is continous
-    extentList.sort()
-
-    # number of soil layers to merge should be equal to number of Regional SSAs
-    #if len(soilShpDict) == len(regionalASlist):
-    if len(soilShpDict) > 0:
-
-        # Add SSURGO paths to their designated lists according to the survey's center so that they draw continously
-        # If the layer has features then add it to the merge list otherwise skip it.  This was added b/c it turns
-        # out that empty mapunit point .shp are in line geometry and not point geometry
-        for surveyCenter in extentList:
-
-            soilShpList.append(soilShpDict[surveyCenter])
-            soilSaShpList.append(soilSaShpDict[surveyCenter])
-
-            if int(arcpy.GetCount_management(muLineShpDict[surveyCenter]).getOutput(0)) > 0:
-                muLineShpList.append(muLineShpDict[surveyCenter])
-
-            if int(arcpy.GetCount_management(muPointShpDict[surveyCenter]).getOutput(0)) > 0:
-                muPointShpList.append(muPointShpDict[surveyCenter])
-
-            if int(arcpy.GetCount_management(featPointShpDict[surveyCenter]).getOutput(0)) > 0:
-                featPointShpList.append(featPointShpDict[surveyCenter])
-
-            if int(arcpy.GetCount_management(featLineShpDict[surveyCenter]).getOutput(0)) > 0:
-                featLineShpList.append(featLineShpDict[surveyCenter])
-
-    # Some reason some surveys are missing......Exit
-    else:
-        if arcpy.Exists(FGDBpath):
-            arcpy.Delete_management(FGDBpath)
-
-        raise MyError, " \n\n All surveys had incompatible datums! Datum needs to be in NAD83 or WGS84."
-
-    # set progressor object which allows progress information to be passed for every merge complete
-    arcpy.SetProgressor("step", "Beginning the merge process...", 0, 6, 1)
-    AddMsgAndPrint("\n" + "Beginning the merge process",0)
-
-    # --------------------------------------------------------------------------Merge Soil Mapunit Polygons
-    arcpy.SetProgressorLabel("Merging " + str(len(soilShpList)) + " Soil Mapunit Layers")
-
+    # The entire Main code in a try statement....Let the fun begin!
     try:
-        for field in soilsFM.fields:
-            if field.name not in ["AREASYMBOL","MUSYM"]:
-                soilsFM.removeFieldMap(soilsFM.findFieldMapIndex(field.name))
 
-        arcpy.Merge_management(soilShpList, os.path.join(FDpath, soilFC), soilsFM)
-        #arcpy.Append_management(soilShpList, os.path.join(FDpath, soilFC), "NO_TEST", soilsFM)
+        # Get a list of Regional areasymbols to download from the Regional Master Table.  [u'WI001, u'WI003']
+        regionalASlist = getRegionalAreaSymbolList(regionalTable,regionChoice)
 
-        AddMsgAndPrint(" \tSuccessfully merged SSURGO Soil Mapunit Polygons",0)
+        # Exit if list of regional areasymbol list is empty
+        if not len(regionalASlist) > 0:
+            raise MyError, "\n\n" + "No Areasymbols were selected from Regional SSA Ownership table. Possible problem with table.....EXITING"
+
+        # sort the regional list
+        regionalASlist.sort()
+
+        # check for missing Regional SSURGO Datasets or duplicates; Exit if any are found
+        AddMsgAndPrint("\n" + "Validating local Regional SSURGO datasets.......",0)
+        ssurgoDatasetDict = validateSSAs(regionalASlist,wssLibrary)
+
+        if len(ssurgoDatasetDict) < 1:
+            raise MyError, "\nAll " + regionChoice + " SSURGO datasets are missing from " + os.path.basename(wssLibrary) + " directory \n\tThere must also not be duplicate SSURGO datasets"
+
+        # There are some SSAs missing from local library
+        elif len(regionalASlist) != len(ssurgoDatasetDict):
+            AddMsgAndPrint("\n" + regionChoice + " is assigned " + str(len(regionalASlist)) + " SSAs --- Missing " + str(len(regionalASlist) - len(ssurgoDatasetDict)) + " SSAs" ,2)
+            AddMsgAndPrint("\nALL SSURGO datasets assigned to " + regionChoice + " must be present to continue",2)
+            raise MyError, "Download missing SSURGO Datasets using the 'Download SSURGO by Region' tool"
+            #AddMsgAndPrint("Only " + str(len(ssurgoDatasetDict)) + " out of " + str(len(regionalASlist)) + " surveys will be imported to create the " + regionChoice + " Transactional Spatial Database",2)
+
+        else:
+            AddMsgAndPrint("\n" + str(len(regionalASlist)) + " surveys will be merged to create the " + regionChoice + " Transactional Spatial Database", 0)
+
+        # --------------------------------------------------------------------------------------Create Empty Regional Transactional File Geodatabase
+        RTSDname = createFGDB(regionChoice, outputFolder)
+
+        if RTSDname == "":
+            raise MyError, " \n Failed to Initiate Empty Regional Transactional Database.  Error in createFGDB() function. Exiting!"
+
+        # Path to Regional FGDB
+        FGDBpath = os.path.join(outputFolder,RTSDname)
+
+        # Path to feature dataset that contains SSURGO feature classes
+        FDpath = os.path.join(FGDBpath,"FD_RTSD")
+
+        # SSURGO layer Name
+        soilFC = "MUPOLYGON"
+        muLineFC = "MULINE"
+        muPointFC = "MUPOINT"
+        soilSaFC = "SAPOLYGON"
+        featPointFC = "FEATPOINT"
+        featLineFC = "FEATLINE"
+
+        # Set environment variables
+        env.workspace = FDpath
+
+        # Parse Datum from MUPOLYGON; can only get datum from a GCS not a projected CS
+        spatialRef = str(arcpy.CreateSpatialReference_management("#",soilFC,"#","#","#","#"))
+
+        userDatum_Start = spatialRef.find("DATUM") + 7
+        userDatum_Stop = spatialRef.find(",", userDatum_Start) - 1
+        userDatum = spatialRef[userDatum_Start:userDatum_Stop]
+
+        AddMsgAndPrint(" \tOutput Coordinate System: " + arcpy.Describe(soilFC).spatialReference.name,0)
+        AddMsgAndPrint(" \tOutput Datum: " + userDatum,0)
+
+        if userDatum == "D_North_American_1983":
+            AddMsgAndPrint(" \tGeographic Transformation: WGS_1984_(ITRF00)_To_NAD_1983",0 )
+
+        env.geographicTransformations = "WGS_1984_(ITRF00)_To_NAD_1983"  # WKID 108190
+        env.outputCoordinateSystem = spatialRef
+
+        arcpy.SetProgressorLabel("Gathering information about Soil Survey datasets...")
+
+        # ------------------------------------------------------------------------------------- Establish Dictionaries, lists and Fieldmappings
+        # Dictionary containing approx center of SSA (key) and the SSURGO layer path (value)
+        soilShpDict = dict()   # {-4002.988250799742: 'K:\\FY2014_SSURGO_R10_download\\soil_wi063\\spatial\\soilmu_a_wi063.shp'}
+        muLineShpDict = dict()
+        muPointShpDict = dict()
+        soilSaShpDict = dict()
+        featPointShpDict = dict()
+        featLineShpDict = dict()
+
+        # lists containing SSURGO layer paths sorted according to the survey center key
+        # This list will be passed over to the Merge command
+        soilShpList = list()
+        muLineShpList = list()
+        muPointShpList = list()
+        soilSaShpList = list()
+        featPointShpList = list()
+        featLineShpList = list()
+
+        # Create FieldMappings objects that will contain all of the fields from each survey
+        # (fieldmap).  FMs will be used to remove every field but AREASYMBOL, FEATSYM, MUSYM
+        soilsFM = arcpy.FieldMappings()
+        muLineFM = arcpy.FieldMappings()
+        muPointFM = arcpy.FieldMappings()
+        soilSaFM = arcpy.FieldMappings()
+        featPointFM = arcpy.FieldMappings()
+        featLineFM = arcpy.FieldMappings()
+
+        # list containing the (Xcenter * Ycenter) for every SSURGO soil layer
+        extentList = list()
+
+        # ------------------------------------------------------------------------------------- Populate Dictionaries, lists and Fieldmappings
+        for SSA in ssurgoDatasetDict:
+
+            # Paths to individual SSURGO layers
+            soilShpPath = os.path.join(os.path.join(ssurgoDatasetDict[SSA],"spatial"),"soilmu_a_" + SSA.lower() + ".shp")
+            muLineShpPath = os.path.join(os.path.join(ssurgoDatasetDict[SSA],"spatial"),"soilmu_l_" + SSA.lower() + ".shp")
+            muPointShpPath = os.path.join(os.path.join(ssurgoDatasetDict[SSA],"spatial"),"soilmu_p_" + SSA.lower() + ".shp")
+            soilSaShpPath = os.path.join(os.path.join(ssurgoDatasetDict[SSA],"spatial"),"soilsa_a_" + SSA.lower() + ".shp")
+            featPointShpPath = os.path.join(os.path.join(ssurgoDatasetDict[SSA],"spatial"),"soilsf_p_" + SSA.lower() + ".shp")
+            featLineShpPath = os.path.join(os.path.join(ssurgoDatasetDict[SSA],"spatial"),"soilsf_l_" + SSA.lower() + ".shp")
+
+            # Calculate the approximate center of a given survey
+            desc = arcpy.Describe(soilShpPath)
+            shpExtent = desc.extent
+            XCntr = (shpExtent.XMin + shpExtent.XMax) / 2.0
+            YCntr = (shpExtent.YMin + shpExtent.YMax) / 2.0
+            surveyCenter = XCntr * YCntr  # approximate center of survey
+
+            # Assign {-4002.988250799742: 'K:\\FY2014_SSURGO_R10_download\\soil_wi063\\spatial\\soilmu_a_wi063.shp'}
+            soilShpDict[surveyCenter] = soilShpPath
+            muLineShpDict[surveyCenter] = muLineShpPath
+            muPointShpDict[surveyCenter] = muPointShpPath
+            soilSaShpDict[surveyCenter] = soilSaShpPath
+            featPointShpDict[surveyCenter] = featPointShpPath
+            featLineShpDict[surveyCenter] = featLineShpPath
+
+            extentList.append(surveyCenter)
+
+            # Add all fields from all of the SSURGO layers into their respective fieldMappings
+            soilsFM.addTable(soilShpPath)
+            muLineFM.addTable(muLineShpPath)
+            muPointFM.addTable(muPointShpPath)
+            soilSaFM.addTable(soilSaShpPath)
+            featPointFM.addTable(featPointShpPath)
+            featLineFM.addTable(featLineShpPath)
+
+            del soilShpPath, muLineShpPath, muPointShpPath, soilSaShpPath, featPointShpPath, featLineShpPath, desc, shpExtent, XCntr, YCntr, surveyCenter
+
+        # ---------------------------------------------------------------------------------------------------------- Begin the Merge Process
+        # Sort shapefiles by extent so that the drawing order is continous
+        extentList.sort()
+
+        # number of soil layers to merge should be equal to number of Regional SSAs
+        #if len(soilShpDict) == len(regionalASlist):
+        if len(soilShpDict) > 0:
+
+            # Add SSURGO paths to their designated lists according to the survey's center so that they draw continously
+            # If the layer has features then add it to the merge list otherwise skip it.  This was added b/c it turns
+            # out that empty mapunit point .shp are in line geometry and not point geometry
+            for surveyCenter in extentList:
+
+                soilShpList.append(soilShpDict[surveyCenter])
+                soilSaShpList.append(soilSaShpDict[surveyCenter])
+
+                if int(arcpy.GetCount_management(muLineShpDict[surveyCenter]).getOutput(0)) > 0:
+                    muLineShpList.append(muLineShpDict[surveyCenter])
+
+                if int(arcpy.GetCount_management(muPointShpDict[surveyCenter]).getOutput(0)) > 0:
+                    muPointShpList.append(muPointShpDict[surveyCenter])
+
+                if int(arcpy.GetCount_management(featPointShpDict[surveyCenter]).getOutput(0)) > 0:
+                    featPointShpList.append(featPointShpDict[surveyCenter])
+
+                if int(arcpy.GetCount_management(featLineShpDict[surveyCenter]).getOutput(0)) > 0:
+                    featLineShpList.append(featLineShpDict[surveyCenter])
+
+        # Some reason some surveys are missing......Exit
+        else:
+            if arcpy.Exists(FGDBpath):
+                arcpy.Delete_management(FGDBpath)
+
+            raise MyError, " \n\n All surveys had incompatible datums! Datum needs to be in NAD83 or WGS84."
+
+        # set progressor object which allows progress information to be passed for every merge complete
+        arcpy.SetProgressor("step", "Beginning the merge process...", 0, 6, 1)
+        AddMsgAndPrint("\n" + "Beginning the merge process",0)
+
+        # ------------------------------------------------------------------------------------------------ Merge Soil Mapunit Polygons
+        arcpy.SetProgressorLabel("Merging " + str(len(soilShpList)) + " Soil Mapunit Layers")
+
+        try:
+            for field in soilsFM.fields:
+                if field.name not in ["AREASYMBOL","MUSYM"]:
+                    soilsFM.removeFieldMap(soilsFM.findFieldMapIndex(field.name))
+
+            soilFCpath = os.path.join(FDpath, soilFC)
+            arcpy.Merge_management(soilShpList, soilFCpath, soilsFM)
+            #arcpy.Append_management(soilShpList, os.path.join(FDpath, soilFC), "NO_TEST", soilsFM)
+
+            AddMsgAndPrint("\tSuccessfully merged SSURGO Soil Mapunit Polygons",0)
+            if not addAttributeIndex(soilFCpath,["AREASYMBOL","MUSYM"]): pass
+
+            arcpy.SetProgressorPosition()
+
+        except:
+            print_exception()
+
+        # ---------------------------------------------------------------------------------------------- Merge Soil Mapunit Lines
+        if len(muLineShpList) > 0:
+
+            arcpy.SetProgressorLabel("Merging " + str(len(muLineShpList)) + " SSURGO Soil Mapunit Line Layers")
+
+            # Transactional FGDB; remove any field other than AREASYMBOL and MUSYM
+            for field in muLineFM.fields:
+                if field.name not in ["AREASYMBOL","MUSYM"]:
+                    muLineFM.removeFieldMap(muLineFM.findFieldMapIndex(field.name))
+
+            muLineFCpath = os.path.join(FDpath, muLineFC)
+            arcpy.Merge_management(muLineShpList, muLineFCpath, muLineFM)
+            #arcpy.Append_management(muLineShpList, os.path.join(FDpath, muLineFC), "NO_TEST", muLineFM)
+
+            AddMsgAndPrint(" \tSuccessfully merged SSURGO Soil Mapunit Lines",0)
+            if not addAttributeIndex(muLineFCpath,["AREASYMBOL","MUSYM"]): pass
+
+        else:
+            AddMsgAndPrint(" \tNo SSURGO Soil Mapunit Lines to merge",0)
+
         arcpy.SetProgressorPosition()
+
+        # ----------------------------------------------------------------------------------------------- Merge Soil Mapunit Points
+        if len(muPointShpList) > 0:
+
+            arcpy.SetProgressorLabel("Merging " + str(len(muPointShpList)) + "SSURGO Soil Mapunit Point Layers")
+
+            # Transactional FGDB; remove any field other than AREASYMBOL and MUSYM
+            for field in muPointFM.fields:
+                if field.name not in ["AREASYMBOL","MUSYM"]:
+                    muPointFM.removeFieldMap(muPointFM.findFieldMapIndex(field.name))
+
+            muPointFCpath = os.path.join(FDpath, muPointFC)
+            arcpy.Merge_management(muPointShpList, muPointFCpath, muPointFM)
+            #arcpy.Append_management(muPointShpList, os.path.join(FDpath, muPointFC), "NO_TEST", muPointFM)
+
+            AddMsgAndPrint(" \tSuccessfully merged SSURGO Soil Mapunit Points",0)
+            if not addAttributeIndex(muPointFCpath,["AREASYMBOL","MUSYM"]): pass
+
+        else:
+            AddMsgAndPrint(" \tNo SSURGO Soil Mapunit Points to merge",0)
+
+        arcpy.SetProgressorPosition()
+
+        # ---------------------------------------------------------------------------------------------- Merge Soil Survey Area
+        arcpy.SetProgressorLabel("Merging " + str(len(soilSaShpList)) + " SSURGO Soil Survey Area Layers")
+
+        # Transactional FGDB; remove any field other than AREASYMBOL and MUSYM
+        for field in soilSaFM.fields:
+            if field.name not in ["AREASYMBOL"]:
+                soilSaFM.removeFieldMap(soilSaFM.findFieldMapIndex(field.name))
+
+        soilSaFCpath = os.path.join(FDpath, soilSaFC)
+        arcpy.Merge_management(soilSaShpList, soilSaFCpath, soilSaFM)
+        #arcpy.Append_management(soilSaShpList, os.path.join(FDpath, soilSaFC), "NO_TEST", soilSaFM)
+
+        AddMsgAndPrint(" \tSuccessfully merged SSURGO Soil Survey Area Polygons",0)
+        if not addAttributeIndex(soilSaFCpath,["AREASYMBOL"]): pass
+
+        arcpy.SetProgressorPosition()
+
+        # --------------------------------------------------------------------------------------------- Merge Special Point Features
+        if len(featPointShpList) > 0:
+
+            arcpy.SetProgressorLabel("Merging " + str(len(featPointShpList)) + " SSURGO Special Point Feature Layers")
+
+            # Transactional FGDB; remove any field other than AREASYMBOL and FEATSYM
+            for field in featPointFM.fields:
+                if field.name not in ["AREASYMBOL", "FEATSYM"]:
+                    featPointFM.removeFieldMap(featPointFM.findFieldMapIndex(field.name))
+
+            featPointFCpath = os.path.join(FDpath, featPointFC)
+            arcpy.Merge_management(featPointShpList, featPointFCpath, featPointFM)
+            #arcpy.Append_management(featPointShpList, os.path.join(FDpath, featPointFC), "NO_TEST", featPointFM)
+
+            AddMsgAndPrint(" \tSuccessfully merged SSURGO Special Point Features",0)
+            if not addAttributeIndex(featPointFCpath,["AREASYMBOL", "FEATSYM"]): pass
+
+        else:
+            AddMsgAndPrint(" \tNo SSURGO Soil Special Point Features to merge",0)
+
+        arcpy.SetProgressorPosition()
+
+        # -------------------------------------------------------------------------------------------- Merge Special Line Features
+        arcpy.SetProgressorLabel("Merging " + str(len(featLineShpList)) + " SSURGO Special Line Feature Layers")
+
+        if len(featLineShpList) > 0:
+
+            # Transactional FGDB; remove any field other than AREASYMBOL and FEATSYM
+            for field in featLineFM.fields:
+                if field.name not in ["AREASYMBOL", "FEATSYM"]:
+                    featLineFM.removeFieldMap(featLineFM.findFieldMapIndex(field.name))
+
+            featLineFCpath = os.path.join(FDpath, featLineFC)
+            arcpy.Merge_management(featLineShpList, featLineFCpath, featLineFM)
+            #arcpy.Append_management(featLineShpList, os.path.join(FDpath, featLineFC), "NO_TEST", featLineFM)
+
+            AddMsgAndPrint(" \tSuccessfully merged SSURGO Special Line Features",0)
+            if not addAttributeIndex(featLineFCpath,["AREASYMBOL", "FEATSYM"]): pass
+
+        else:
+            AddMsgAndPrint(" \tNo SSURGO Special Line Features to merge",0)
+
+        arcpy.SetProgressorPosition()
+        arcpy.ResetProgressor()
+
+        # --------------------------------------------------------------------------------------------- Import Feature descriptions
+        if not ImportFeatureFiles(ssurgoDatasetDict):
+            AddMsgAndPrint("\nError importing feature files into the featdesc table",2)
+
+        # ---------------------------------------------------------------------------------------------------------- Setup Topology
+        # Validate Topology with a cluster of 0.1 meters
+        if createTopology(FDpath):
+            arcpy.SetProgressorLabel("Validating Topology at 0.1 meters")
+            arcpy.ValidateTopology_management(os.path.join(FDpath,"FD_RTSD_Topology"))
+            AddMsgAndPrint(" \tValidated Topology at 0.1 meters",0)
+
+        else:
+            AddMsgAndPrint(" \n\tFailed to Create Topology. Create Topology Manually",2)
+
+        # Create Relationship class between project_record and SAPOLYGON feature class
+        arcpy.SetProgressorLabel("Creating Relationship Class between Project_Record & SAPOLYGON")
+        prjRecTable = os.path.join(FGDBpath,'ProjectRecord' + os.sep + 'Project_Record')
+        saPolyPath = os.path.join(FDpath,soilSaFC)
+        relName = "x" + prjRecTable.capitalize() + "_" + soilSaFC
+        arcpy.CreateRelationshipClass_management(prjRecTable, saPolyPath, relName, "SIMPLE", "> SAPOLYGON", "< Project_Record", "NONE", "ONE_TO_ONE", "NONE", "AREASYMBOL", "AREASYMBOL", "", "")
+        AddMsgAndPrint("\n" + "Successfully Created Relationship Class")
+
+        arcpy.SetProgressorLabel("Compacting " + os.path.basename(FGDBpath))
+        arcpy.Compact_management(FGDBpath)
+        AddMsgAndPrint("\n" + "Successfully Compacted " + os.path.basename(FGDBpath))
+
+        if updateAliasNames(regionChoice, FDpath):
+            AddMsgAndPrint("\nSuccessfully Updated Alias Names for Feature Classes within " + os.path.basename(FGDBpath))
+        else:
+            AddMsgAndPrint("\nUnable to Update Alias Names for Feature Classes within " + os.path.basename(FGDBpath),2)
+
+        # -----------------------------------------------------------------------------------------
+        AddMsgAndPrint(" \n*****************************************************************************************",1)
+        AddMsgAndPrint("Total # of SSURGO Datasets Appended: " + str(splitThousands(len(soilShpList))),1)
+        AddMsgAndPrint(" \tTotal # of Mapunit Polygons: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + soilFC).getOutput(0))),1)
+        AddMsgAndPrint(" \tTotal # of Mapunit Lines: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + muLineFC).getOutput(0))),1)
+        AddMsgAndPrint(" \tTotal # of Mapunit Points: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + muPointFC).getOutput(0))),1)
+        AddMsgAndPrint(" \tTotal # of Special Feature Points: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + featPointFC).getOutput(0))),1)
+        AddMsgAndPrint(" \tTotal # of Special Feature Lines: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + featLineFC).getOutput(0))),1)
+
+        arcpy.RefreshCatalog(outputFolder)
+
+        endTime = datetime.now()
+        AddMsgAndPrint(" \nTotal Time: " + str(endTime - startTime),0)
+
+
+    # This is where the fun ends!
+    except arcpy.ExecuteError:
+        AddMsgAndPrint(arcpy.GetMessages(2),2)
 
     except:
         print_exception()
-
-    # --------------------------------------------------------------------------Merge Soil Mapunit Lines
-    if len(muLineShpList) > 0:
-
-        arcpy.SetProgressorLabel("Merging " + str(len(muLineShpList)) + " SSURGO Soil Mapunit Line Layers")
-
-        # Transactional FGDB; remove any field other than AREASYMBOL and MUSYM
-        for field in muLineFM.fields:
-            if field.name not in ["AREASYMBOL","MUSYM"]:
-                muLineFM.removeFieldMap(muLineFM.findFieldMapIndex(field.name))
-
-        arcpy.Merge_management(muLineShpList, os.path.join(FDpath, muLineFC), muLineFM)
-        #arcpy.Append_management(muLineShpList, os.path.join(FDpath, muLineFC), "NO_TEST", muLineFM)
-
-        AddMsgAndPrint(" \tSuccessfully merged SSURGO Soil Mapunit Lines",0)
-
-    else:
-        AddMsgAndPrint(" \tNo SSURGO Soil Mapunit Lines to merge",0)
-
-    arcpy.SetProgressorPosition()
-
-    # --------------------------------------------------------------------------Merge Soil Mapunit Points
-    if len(muPointShpList) > 0:
-
-        arcpy.SetProgressorLabel("Merging " + str(len(muPointShpList)) + "SSURGO Soil Mapunit Point Layers")
-
-        # Transactional FGDB; remove any field other than AREASYMBOL and MUSYM
-        for field in muPointFM.fields:
-            if field.name not in ["AREASYMBOL","MUSYM"]:
-                muPointFM.removeFieldMap(muPointFM.findFieldMapIndex(field.name))
-
-        arcpy.Merge_management(muPointShpList, os.path.join(FDpath, muPointFC), muPointFM)
-        #arcpy.Append_management(muPointShpList, os.path.join(FDpath, muPointFC), "NO_TEST", muPointFM)
-
-        AddMsgAndPrint(" \tSuccessfully merged SSURGO Soil Mapunit Points",0)
-
-    else:
-        AddMsgAndPrint(" \tNo SSURGO Soil Mapunit Points to merge",0)
-
-    arcpy.SetProgressorPosition()
-
-    # --------------------------------------------------------------------------Merge Soil Survey Area
-    arcpy.SetProgressorLabel("Merging " + str(len(soilSaShpList)) + " SSURGO Soil Survey Area Layers")
-
-    # Transactional FGDB; remove any field other than AREASYMBOL and MUSYM
-    for field in soilSaFM.fields:
-        if field.name not in ["AREASYMBOL"]:
-            soilSaFM.removeFieldMap(soilSaFM.findFieldMapIndex(field.name))
-
-    arcpy.Merge_management(soilSaShpList, os.path.join(FDpath, soilSaFC), soilSaFM)
-    #arcpy.Append_management(soilSaShpList, os.path.join(FDpath, soilSaFC), "NO_TEST", soilSaFM)
-
-    AddMsgAndPrint(" \tSuccessfully merged SSURGO Soil Survey Area Polygons",0)
-    arcpy.SetProgressorPosition()
-
-    # --------------------------------------------------------------------------Merge Special Point Features
-    if len(featPointShpList) > 0:
-
-        arcpy.SetProgressorLabel("Merging " + str(len(featPointShpList)) + " SSURGO Special Point Feature Layers")
-
-        # Transactional FGDB; remove any field other than AREASYMBOL and FEATSYM
-        for field in featPointFM.fields:
-            if field.name not in ["AREASYMBOL", "FEATSYM"]:
-                featPointFM.removeFieldMap(featPointFM.findFieldMapIndex(field.name))
-
-        arcpy.Merge_management(featPointShpList, os.path.join(FDpath, featPointFC), featPointFM)
-        #arcpy.Append_management(featPointShpList, os.path.join(FDpath, featPointFC), "NO_TEST", featPointFM)
-
-        AddMsgAndPrint(" \tSuccessfully merged SSURGO Special Point Features",0)
-
-    else:
-        AddMsgAndPrint(" \tNo SSURGO Soil Special Point Features to merge",0)
-
-    arcpy.SetProgressorPosition()
-
-    # --------------------------------------------------------------------------Merge Special Line Features
-    arcpy.SetProgressorLabel("Merging " + str(len(featLineShpList)) + " SSURGO Special Line Feature Layers")
-
-    if len(featLineShpList) > 0:
-
-        # Transactional FGDB; remove any field other than AREASYMBOL and FEATSYM
-        for field in featLineFM.fields:
-            if field.name not in ["AREASYMBOL", "FEATSYM"]:
-                featLineFM.removeFieldMap(featLineFM.findFieldMapIndex(field.name))
-
-        arcpy.Merge_management(featLineShpList, os.path.join(FDpath, featLineFC), featLineFM)
-        #arcpy.Append_management(featLineShpList, os.path.join(FDpath, featLineFC), "NO_TEST", featLineFM)
-
-        AddMsgAndPrint(" \tSuccessfully merged SSURGO Special Line Features",0)
-
-    else:
-        AddMsgAndPrint(" \tNo SSURGO Special Line Features to merge",0)
-
-    arcpy.SetProgressorPosition()
-    arcpy.ResetProgressor()
-
-    # --------------------------------------------------------------------------------------------- Import Feature descriptions
-    if not ImportFeatureFiles(ssurgoDatasetDict):
-        AddMsgAndPrint("\nError importing feature files into the featdesc table",2)
-
-    # ---------------------------------------------------------------------------------------------------------- Setup Topology
-    # Validate Topology with a cluster of 0.1 meters
-    if createTopology(FDpath):
-        arcpy.SetProgressorLabel("Validating Topology at 0.1 meters")
-        arcpy.ValidateTopology_management(os.path.join(FDpath,"FD_RTSD_Topology"))
-        AddMsgAndPrint(" \tValidated Topology at 0.1 meters",0)
-
-    else:
-        AddMsgAndPrint(" \n\tFailed to Create Topology. Create Topology Manually",2)
-
-    # Create Relationship class between project_record and SAPOLYGON feature class
-    arcpy.SetProgressorLabel("Creating Relationship Class between Project_Record & SAPOLYGON")
-    prjRecTable = os.path.join(FGDBpath,'ProjectRecord' + os.sep + 'Project_Record')
-    saPolyPath = os.path.join(FDpath,soilSaFC)
-    relName = "x" + prjRecTable.capitalize() + "_" + soilSaFC
-    arcpy.CreateRelationshipClass_management(prjRecTable, saPolyPath, relName, "SIMPLE", "> SAPOLYGON", "< Project_Record", "NONE", "ONE_TO_ONE", "NONE", "AREASYMBOL", "AREASYMBOL", "", "")
-    AddMsgAndPrint("\n" + "Successfully Created Relationship Class")
-
-    arcpy.SetProgressorLabel("Compacting " + os.path.basename(FGDBpath))
-    arcpy.Compact_management(FGDBpath)
-    AddMsgAndPrint("\n" + "Successfully Compacted " + os.path.basename(FGDBpath))
-
-    if updateAliasNames(regionChoice, FDpath):
-        AddMsgAndPrint("\nSuccessfully Updated Alias Names for Feature Classes within " + os.path.basename(FGDBpath))
-    else:
-        AddMsgAndPrint("\nUnable to Update Alias Names for Feature Classes within " + os.path.basename(FGDBpath),2)
-
-    # -----------------------------------------------------------------------------------------
-    AddMsgAndPrint(" \n*****************************************************************************************",1)
-    AddMsgAndPrint("Total # of SSURGO Datasets Appended: " + str(splitThousands(len(soilShpList))),1)
-    AddMsgAndPrint(" \tTotal # of Mapunit Polygons: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + soilFC).getOutput(0))),1)
-    AddMsgAndPrint(" \tTotal # of Mapunit Lines: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + muLineFC).getOutput(0))),1)
-    AddMsgAndPrint(" \tTotal # of Mapunit Points: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + muPointFC).getOutput(0))),1)
-    AddMsgAndPrint(" \tTotal # of Special Feature Points: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + featPointFC).getOutput(0))),1)
-    AddMsgAndPrint(" \tTotal # of Special Feature Lines: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + featLineFC).getOutput(0))),1)
-
-    arcpy.RefreshCatalog(outputFolder)
-
-    endTime = datetime.now()
-    AddMsgAndPrint(" \nTotal Time: " + str(endTime - startTime),0)
-
-    try:
-        del regionChoice
-        del outputFolder
-        del wssLibrary
-        del regionalTable
-        del ssurgoDatasetDict
-        del RTSDname
-        del FGDBpath
-        del FDpath
-        del soilFC
-        del muLineFC
-        del muPointFC
-        del soilSaFC
-        del featPointFC
-        del featLineFC
-        del spatialRef
-        del userDatum_Start
-        del userDatum_Stop
-        del userDatum
-        del soilShpDict
-        del muLineShpDict
-        del muPointShpDict
-        del soilSaShpDict
-        del featPointShpDict
-        del featLineShpDict
-        del soilShpList
-        del muLineShpList
-        del muPointShpList
-        del soilSaShpList
-        del featPointShpList
-        del featLineShpList
-        del soilsFM
-        del muLineFM
-        del muPointFM
-        del soilSaFM
-        del featPointFM
-        del featLineFM
-        del extentList
-        del endTime
-        del prjRecTable
-        del saPolyPath
-        del relName
-
-    except:
-        pass
-
-# This is where the fun ends!
-except arcpy.ExecuteError:
-
-
-    AddMsgAndPrint(arcpy.GetMessages(2),2)
-
-except:
-    print_exception()

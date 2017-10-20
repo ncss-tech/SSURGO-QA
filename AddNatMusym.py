@@ -159,11 +159,11 @@ def GetUniqueValues(theInput,theField):
 
         else:
             AddMsgAndPrint("\n\tThere are no features in layer.  Empty Geometry. EXITING",2)
-            sys.exit()
+            exit()
 
         if not len(valueList):
             AddMsgAndPrint("\n\tThere were no" + theField + " values in layer. EXITING",2)
-            sys.exit()
+            exit()
 
         # if number of Areasymbols exceed 300 than parse areasymbols
         # into lists containing no more than 300 areasymbols
@@ -176,7 +176,7 @@ def GetUniqueValues(theInput,theField):
     except:
         errorMsg()
         AddMsgAndPrint("\nCould not retrieve list of unique values from " + theField + " field",2)
-        sys.exit()
+        exit()
 
 ## ===============================================================================================================
 def parseValuesIntoLists(valueList,limit=1000):
@@ -215,7 +215,7 @@ def parseValuesIntoLists(valueList,limit=1000):
 
         if not len(listOfValueStrings):
             AddMsgAndPrint("\tCould not Parse value list into manageable sets",2)
-            sys.exit()
+            exit()
 
         else:
             #AddMsgAndPrint("\t" + str(len(listOfValueStrings)) + " request(s) are needed to obtain NATSYM values for this layer")
@@ -224,7 +224,7 @@ def parseValuesIntoLists(valueList,limit=1000):
     except:
         AddMsgAndPrint("Unhandled exception (parseValuesIntoLists)", 2)
         errorMsg()
-        sys.exit()
+        exit()
 
 ## ===================================================================================
 def getNATMUSYM(listsOfValues, featureLayer):
@@ -275,9 +275,9 @@ def getNATMUSYM(listsOfValues, featureLayer):
 
             # Create request using JSON, return data as JSON
             dRequest = dict()
-            dRequest["FORMAT"] = "JSON"
+            dRequest["format"] = "JSON"
             ##dRequest["FORMAT"] = "JSON+COLUMNNAME+METADATA"
-            dRequest["QUERY"] = sQuery
+            dRequest["query"] = sQuery
             jData = json.dumps(dRequest)
 
             # Send request to SDA Tabular service using urllib2 library
@@ -444,7 +444,7 @@ if __name__ == '__main__':
         """ ------------------------------------------- MUKEY field must be present ----------------------------------------------"""
         if not FindField(inputFeature,"MUKEY"):
             AddMsgAndPrint("\n\"MUKEY\" field is missing from input feature!  EXITING!",2)
-            sys.exit()
+            exit()
 
         """ -------------------------------- Describe Data to determine the source field of the unique values ---------------------"""
         theDesc = arcpy.Describe(inputFeature)
@@ -463,7 +463,7 @@ if __name__ == '__main__':
                 sourceField = "MUKEY"
             else:
                 AddMsgAndPrint("\t\"AREASYMBOL\" and \"MUKEY\" fields are missing from " + theName  + " layer -- Need one or the other to continue.  EXITING!",2)
-                sys.exit()
+                exit()
 
             """ ------------------------------------- Input feature is a feature class"""
         elif theElementType.lower().find('featureclass') > -1:
@@ -505,12 +505,12 @@ if __name__ == '__main__':
                 sourceField = "MUKEY"
             else:
                 AddMsgAndPrint("\t\"AREASYMBOL\" and \"MUKEY\" fields are missing from feature class! -- Need one or the other to continue.  EXITING!",2)
-                sys.exit()
+                exit()
 
         # Input Feature data type not recognized
         else:
             AddMsgAndPrint("\nInvalid data type: " + theDataType.lower(),2)
-            sys.exit()
+            exit()
 
     	""" -------------------------------  Get list of unique values from the specified source field  ---------------------------------"""
         uniqueValueList = GetUniqueValues(source,sourceField)
