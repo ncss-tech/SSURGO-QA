@@ -128,9 +128,6 @@
 #  Last updated 2/22/2017
 #
 # Beginning of Functions
-## ===================================================================================
-class MyError(Exception):
-    pass
 
 ## ===================================================================================
 def print_exception():
@@ -157,8 +154,6 @@ def AddMsgAndPrint(msg, severity=0):
         f = open(textFilePath,'a+')
         f.write(msg + "\n")
         f.close
-
-        #for string in msg.split('\n'):
 
         # Add a geoprocessing message (in case this is run as a tool)
         if severity == 0:
@@ -418,7 +413,7 @@ def importTabularData(tabularFolder, tblAliases):
         # that make up the tabular data set.
         mdstattabsTable = env.workspace + os.sep + "mdstattabs"
 
-        AddMsgAndPrint("\nImporting Tabular Data for: " + SSA,1)
+        AddMsgAndPrint("\n\nImporting Tabular Data for: " + SSA,1)
 
         # set progressor object which allows progress information to be passed for every merge complete
         arcpy.SetProgressor("step", "Importing Tabular Data for " + SSA, 0, len(GDBTables), 1)
@@ -525,7 +520,7 @@ def importTabularData(tabularFolder, tblAliases):
                             AddMsgAndPrint("\t\t\tValue: " + str(newRow),2)
                             print_exception()
 
-                        AddMsgAndPrint("\t--> " + iefileName + theAlias + theRecLength + " Records Added: " + str(splitThousands(numOfRowsAdded)),0)
+                        AddMsgAndPrint("\t\t--> " + iefileName + theAlias + theRecLength + " Records Added: " + str(splitThousands(numOfRowsAdded)),0)
 
                         # compare the # of rows inserted with the number of valid rows in the text file.
                         if numOfRowsAdded != textFileRecords:
@@ -536,10 +531,10 @@ def importTabularData(tabularFolder, tblAliases):
                         del GDBtable, x, aliasName, iefileName, txtPath, theAlias, theRecLength, nameOfFields, textFileRecords, rowInFile, numOfRowsAdded, cursor, reader
 
                     else:
-                        AddMsgAndPrint("\t--> " + iefileName + theAlias + theRecLength + " Records Added: 0",0)
+                        AddMsgAndPrint("\t\t--> " + iefileName + theAlias + theRecLength + " Records Added: 0",0)
 
                 else:
-                    AddMsgAndPrint("\t--> " + iefileName + " does NOT exist tabular folder.....SKIPPING ",2)
+                    AddMsgAndPrint("\t\t--> " + iefileName + " does NOT exist tabular folder.....SKIPPING ",2)
 
             arcpy.SetProgressorPosition()
 
@@ -852,16 +847,20 @@ def addAttributeIndex(table,fieldList,verbose=True):
     try:
         # Make sure table exists. - Just in case
         if not arcpy.Exists(table):
-            AddMsgAndPrint("\tAttribute index cannot be created for: " + os.path.basename(table) + " TABLE DOES NOT EXIST",2)
+            AddMsgAndPrint("Attribute index cannot be created for: " + os.path.basename(table) + " TABLE DOES NOT EXIST",2)
             return False
+
+        else:
+            if verbose: AddMsgAndPrint("Adding Indexes to Table: " + os.path.basename(table))
 
         # iterate through every field
         for fieldToIndex in fieldList:
 
             # Make sure field exists in table - Just in case
             if not len(arcpy.ListFields(table,"*" + fieldToIndex))>0:
-                AddMsgAndPrint("\tAttribute index cannot be created for: " + fieldToIndex + ". FIELD DOES NOT EXIST",2)
-                continue
+                if verbose:
+                    AddMsgAndPrint("\tAttribute index cannot be created for: " + fieldToIndex + ". FIELD DOES NOT EXIST",2)
+                    continue
 
             # list of indexes (attribute and spatial) within the table that are
             # associated with the field or a field that has the field name in it.
@@ -885,8 +884,9 @@ def addAttributeIndex(table,fieldList,verbose=True):
 
                         # Field is already part of an existing index - Notify User
                         if fld.name == fieldToIndex:
-                            AddMsgAndPrint("\tAttribute Index for " + fieldToIndex + " field already exists",1)
-                            bFieldIndexExists = True
+                            if verbose:
+                                AddMsgAndPrint("\tAttribute Index for " + fieldToIndex + " field already exists",1)
+                                bFieldIndexExists = True
 
                     # Field is already part of an existing index - Proceed to next field
                     if bFieldIndexExists:
@@ -905,7 +905,6 @@ def addAttributeIndex(table,fieldList,verbose=True):
     except:
         print_exception()
         return False
-
 
 ## ====================================== Main Body ===========================================================
 # Import modules
@@ -950,7 +949,8 @@ if __name__ == '__main__':
     ssurgoTemplate = os.path.dirname(sys.argv[0]) + os.sep + "SSURGO_Table_Template.gdb"
 
     if b_importTabularData and not os.path.exists(ssurgoTemplate):
-        raise MyError, "\n SSURGO_Table_Template.gdb does not exist in " + os.path.dirname(sys.argv[0])
+        AddMsgAndPrint("\n SSURGO_Table_Template.gdb does not exist in " + os.path.dirname(sys.argv[0]),2)
+        exit()
 
     from datetime import datetime
     startTime = datetime.now()
@@ -992,7 +992,8 @@ if __name__ == '__main__':
             AddMsgAndPrint("\nCreated File Geodatabase: " + FGDBpath,0)
 
             if not createFeatureClasses(FGDBpath,spatialRef):
-                raise MyError, "\nFailed to Initiate File Geodatabase. Exiting!"
+                AddMsgAndPrint("\nFailed to Initiate File Geodatabase. Exiting!",2)
+                exit()
 
             tblAliases = dict()
             tblAliases = GetTableAliases(ssurgoTemplate, tblAliases)
@@ -1000,10 +1001,12 @@ if __name__ == '__main__':
         # import Tabular was not selected; Create Empty FileGDB and create feature classes
         else:
             if not createFGDB(GDBname,outputFolder,spatialRef):
-                raise MyError, "\nFailed to Initiate File Geodatabase. Exiting!"
+                AddMsgAndPrint("\nFailed to Initiate File Geodatabase. Exiting!",2)
+                exit()
 
             if not createFeatureClasses(FGDBpath,spatialRef):
-                raise MyError, "\nFailed to Initiate File Geodatabase. Exiting!"
+                AddMsgAndPrint("\nFailed to Initiate File Geodatabase. Exiting!",2)
+                exit()
 
         # Set environment variables to ITRF0 if going between WGS84 and NAD1983
         env.workspace = FGDBpath
@@ -1163,7 +1166,8 @@ if __name__ == '__main__':
             if arcpy.Exists(FGDBpath):
                 arcpy.Delete_management(FGDBpath)
 
-            raise MyError, "\n\n No Soil Surveys found to merge.....Exiting!"
+            AddMsgAndPrint("\n\n No Soil Surveys found to merge.....Exiting!",2)
+            exit()
 
         # set progressor object which allows progress information to be passed for every merge complete
         if bSTATSGO:
@@ -1171,18 +1175,20 @@ if __name__ == '__main__':
         else:
             arcpy.SetProgressor("step", "Beginning the merge process...", 0, 6, 1)
 
-        # --------------------------------------------------------------------------Merge Soil Mapunit Polygons
+        # ---------------------------------------------------------------------------------------------------- Merge Soil Mapunit Polygons
+        AddMsgAndPrint("\nMerging SSURGO Spatial Datasets:")
+
         arcpy.SetProgressorLabel("Merging " + str(len(soilShpList)) + " SSURGO Soil Mapunit Polygon Layers")
 
         soilFCpath = os.path.join(FGDBpath, soilFC)
         arcpy.Merge_management(soilShpList, soilFCpath)
+        AddMsgAndPrint("\tSuccessfully merged SSURGO Soil Mapunit Polygons",0)
 
-        if not addAttributeIndex(soilFCpath,["AREASYMBOL","MUSYM"]): pass
+        if not addAttributeIndex(soilFCpath,["AREASYMBOL","MUSYM"],False): pass
 
-        AddMsgAndPrint("\nSuccessfully merged SSURGO Soil Mapunit Polygons",0)
         arcpy.SetProgressorPosition()
 
-        # --------------------------------------------------------------------------Merge Soil Mapunit Lines
+        # --------------------------------------------------------------------------------------------------- Merge Soil Mapunit Lines
         if not bSTATSGO:
             if len(muLineShpList) > 0:
 
@@ -1192,16 +1198,16 @@ if __name__ == '__main__':
                 arcpy.Merge_management(muLineShpList,muLineFCpath)
                 #arcpy.Append_management(muLineShpList, os.path.join(FGDBpath, muLineFC), "NO_TEST")
 
-                AddMsgAndPrint("Successfully merged SSURGO Soil Mapunit Lines",0)
+                AddMsgAndPrint("\tSuccessfully merged SSURGO Soil Mapunit Lines",0)
 
-                if not addAttributeIndex(muLineFCpath,["AREASYMBOL","MUSYM"]): pass
+                if not addAttributeIndex(muLineFCpath,["AREASYMBOL","MUSYM"],False): pass
 
             else:
-                AddMsgAndPrint("No SSURGO Soil Mapunit Lines to merge",0)
+                AddMsgAndPrint("\tNo SSURGO Soil Mapunit Lines to merge",0)
 
             arcpy.SetProgressorPosition()
 
-        # --------------------------------------------------------------------------Merge Soil Mapunit Points
+        # --------------------------------------------------------------------------------------------------- Merge Soil Mapunit Points
         if not bSTATSGO:
             if len(muPointShpList) > 0:
 
@@ -1211,27 +1217,28 @@ if __name__ == '__main__':
                 arcpy.Merge_management(muPointShpList, muPointFCpath)
                 #arcpy.Append_management(muPointShpList, os.path.join(FGDBpath, muPointFC), "NO_TEST", muPointFM)
 
-                AddMsgAndPrint("Successfully merged SSURGO Soil Mapunit Points",0)
-                if not addAttributeIndex(muPointFCpath,["AREASYMBOL","MUSYM"]): pass
+                AddMsgAndPrint("\tSuccessfully merged SSURGO Soil Mapunit Points",0)
+
+                if not addAttributeIndex(muPointFCpath,["AREASYMBOL","MUSYM"],False): pass
 
             else:
-                AddMsgAndPrint("No SSURGO Soil Mapunit Points to merge",0)
+                AddMsgAndPrint("\tNo SSURGO Soil Mapunit Points to merge",0)
 
             arcpy.SetProgressorPosition()
 
-        # --------------------------------------------------------------------------Merge Soil Survey Area
+        # ---------------------------------------------------------------------------------------------------- Merge Soil Survey Area
         if not bSTATSGO:
             arcpy.SetProgressorLabel("Merging " + str(len(soilSaShpList)) + " SSURGO Soil Survey Area Layers")
 
             soilSaFCpath = os.path.join(FGDBpath, soilSaFC)
             arcpy.Merge_management(soilSaShpList,soilSaFCpath)
 
-            AddMsgAndPrint("Successfully merged SSURGO Soil Survey Area Polygons",0)
-            if not addAttributeIndex(soilSaFCpath,["AREASYMBOL"]): pass
+            AddMsgAndPrint("\tSuccessfully merged SSURGO Soil Survey Area Polygons",0)
+            if not addAttributeIndex(soilSaFCpath,["AREASYMBOL"],False): pass
 
             arcpy.SetProgressorPosition()
 
-        # --------------------------------------------------------------------------Merge Special Point Features
+        # ---------------------------------------------------------------------------------------------------- Merge Special Point Features
         if not bSTATSGO:
             if len(featPointShpList) > 0:
 
@@ -1240,15 +1247,15 @@ if __name__ == '__main__':
                 featPointFCpath = os.path.join(FGDBpath, featPointFC)
                 arcpy.Merge_management(featPointShpList, featPointFCpath)
 
-                AddMsgAndPrint("Successfully merged SSURGO Special Point Features",0)
-                if not addAttributeIndex(featPointFCpath,["AREASYMBOL", "FEATSYM"]): pass
+                AddMsgAndPrint("\tSuccessfully merged SSURGO Special Point Features",0)
+                if not addAttributeIndex(featPointFCpath,["AREASYMBOL", "FEATSYM"],False): pass
 
             else:
-                AddMsgAndPrint("No SSURGO Soil Special Point Features to merge",0)
+                AddMsgAndPrint("\tNo SSURGO Soil Special Point Features to merge",0)
 
             arcpy.SetProgressorPosition()
 
-        # --------------------------------------------------------------------------Merge Special Line Features
+        # ---------------------------------------------------------------------------------------------------- Merge Special Line Features
         if not bSTATSGO:
             if len(featLineShpList) > 0:
 
@@ -1257,16 +1264,16 @@ if __name__ == '__main__':
                 featLineFCpath = os.path.join(FGDBpath, featLineFC)
                 arcpy.Merge_management(featLineShpList, featLineFCpath)
 
-                AddMsgAndPrint("Successfully merged SSURGO Special Line Features",0)
-                if not addAttributeIndex(featLineFCpath,["AREASYMBOL", "FEATSYM"]): pass
+                AddMsgAndPrint("\tSuccessfully merged SSURGO Special Line Features",0)
+                if not addAttributeIndex(featLineFCpath,["AREASYMBOL", "FEATSYM"],False): pass
 
             else:
-                AddMsgAndPrint("No SSURGO Special Line Features to merge",0)
+                AddMsgAndPrint("\tNo SSURGO Special Line Features to merge",0)
 
             arcpy.SetProgressorPosition()
 
         # Strictly Formatting
-        AddMsgAndPrint("\n*******************************************************************************************************",1)
+        AddMsgAndPrint("\n-------------------------------------------------------------------------------------------------------",1)
 
         # Import tabular data if option was selected
         if b_importTabularData:
@@ -1379,27 +1386,31 @@ if __name__ == '__main__':
 
             del i
 
-        # --------------------------------------------------  Add Field Aliases to Spatial Layers -tabular already has aliases embedded.
+        # -----------------------------------------------------------------------------  Add Field Aliases to Spatial Layers -tabular already has aliases embedded.
         if updateAliasNames(FGDBpath, GDBname):
             AddMsgAndPrint("\nSuccessfully updated alias names for feature classes within " + os.path.basename(FGDBpath))
         else:
             AddMsgAndPrint("\nUnable to update alias names for feature classes within " + os.path.basename(FGDBpath),2)
 
-        # ---------------------------------------------------- Add Attribute Index to every table and field
-##        if not addAttributeIndex(os.path.join(FGDBpath,"mapunit"),["musym", "muname","mukind"]): pass
-##        if not addAttributeIndex(os.path.join(FGDBpath,"component"),["musym", "muname","mukind"]): pass
+        # ----------------------------------------------------------------------------- Add Attribute Index to specific tables
+        if not bSTATSGO:
+            arcpy.SetProgressorLabel("Adding Attribute Indexes")
+            if not addAttributeIndex(os.path.join(FGDBpath,"mapunit"),["musym", "muname","mukind","farmlndcl"],False): pass
+            if not addAttributeIndex(os.path.join(FGDBpath,"component"),["comppct_r","compname", "compkind","majcompflag","slope_r","taxorder","taxsuborder","taxgrtgroup","taxsubgrp","taxpartsize"],False): pass
+            if not addAttributeIndex(os.path.join(FGDBpath,"muaggatt"),["musym","muname","mustatus","flodfreqdcd","drclassdcd","hydgrpdcd","hydclprs"],False):pass
 
-        fgdbTables = arcpy.ListTables(FGDBpath)
-        AddMsgAndPrint("\nAdding Attribute Indexes to tables")
+#         ----------------------------------------------------------------------------- Use the Following code to Add indexes to ALL fields
+##        fgdbTables = arcpy.ListTables('*')
+##        fgdbFCs = [fgdbTables.append(fc) for fc in arcpy.ListFeatureClasses('*')]
+##
+##        AddMsgAndPrint("\nAdding Attribute Indexes")
+##
+##        for table in fgdbTables:
+##            tablePath = os.path.join(FGDBpath,table)
+##            fieldNames = [f.name for f in arcpy.ListFields(tablePath)]
+##
+##            if not addAttributeIndex(tablePath,fieldNames): continue
 
-        for table in fgdbTables:
-            tablePath = os.path.join(FGDBpath,table)
-            fieldNames = [f.name for f in arcpy.ListFields(tablePath)]
-
-            if not addAttributeIndex(tablePath,fieldNames,False): continue
-
-        # -----------------------------------------------------------------------------------------
-        env.workspace = FGDBpath
 
         AddMsgAndPrint("\n******************************************************************************************************************",1)
         AddMsgAndPrint("Total # of SSURGO Datasets Appended: " + str(splitThousands(len(soilShpList))),1)

@@ -288,7 +288,7 @@ def appendToProjectRecord(nasisMUKEYs, prjRecordFC, regionOwnership, ssurgoInput
         arcpy.AddField_management(tempPrjMapunits,"RECERT_NEEDED", "TEXT", "", "", 5)
 
         arcpy.CalculateField_management(tempPrjMapunits, "PROJECT_NAME", "\"" + currentProject + "\"", "PYTHON_9.3")
-        arcpy.CalculateField_management(tempPrjMapunits,"STATUS", "\"In Progress\"","PYTHON_9.3")
+        arcpy.CalculateField_management(tempPrjMapunits,"STATUS", "\"Complete\"","PYTHON_9.3")
         arcpy.CalculateField_management(tempPrjMapunits, "RECERT_NEEDED", "\"No\"","PYTHON_9.3")
 
         fieldMap = GetFieldInfo(tempPrjMapunits)
