@@ -9,10 +9,7 @@
 # 608.662.4422 ext. 216
 #
 #
-# Last Modified:  2/8/20107
-## ===================================================================================
-class MyError(Exception):
-    pass
+# Last Modified:  10/24/2017
 
 ## ===================================================================================
 def print_exception():
@@ -135,7 +132,7 @@ def validateSSAs(surveyList, wssLibrary):
 
         # ------------------------------------------------------------------------ No Datasets in Library
         if len(wssLibraryList) < 1:
-            AddMsgAndPrint(" \n\tNo SSURGO datasets were found in " + os.path.dirname(wssLibrary) + " directory",2)
+            AddMsgAndPrint("\n\tNo SSURGO datasets were found in " + os.path.dirname(wssLibrary) + " directory",2)
             return ""
 
         # ------------------------------------------------------------------------ Missing SSURGO Datasets
@@ -164,9 +161,9 @@ def validateSSAs(surveyList, wssLibrary):
                     duplicateSSAs.append(survey)
 
             if len(duplicateSSAs) >  0:
-                AddMsgAndPrint(" \n\tThe following are duplicate SSURGO datasets found in " + os.path.basename(wssLibrary) + " directory:",2)
+                AddMsgAndPrint("\n\tThe following are duplicate SSURGO datasets found in " + os.path.basename(wssLibrary) + " directory:",2)
                 for survey in duplicateSSAs:
-                    AddMsgAndPrint(" \t\t" + survey,2)
+                    AddMsgAndPrint("\t\t" + survey,2)
                     ssurgoDatasetDict.pop(survey, None)
 
         # -------------------------------------------------------------------- Make sure Datum is either NAD83 or WGS84 and soils layer is not missing
@@ -183,15 +180,15 @@ def validateSSAs(surveyList, wssLibrary):
                 missingSoilLayer.append(survey)
 
         if len(wrongDatum) > 0:
-            AddMsgAndPrint(" \n\tThe following local SSURGO datasets have a Datum other than WGS84 or NAD83:",2)
+            AddMsgAndPrint("\n\tThe following local SSURGO datasets have a Datum other than WGS84 or NAD83:",2)
             for survey in wrongDatum:
-                AddMsgAndPrint(" \t\t" + survey,2)
+                AddMsgAndPrint("\t\t" + survey,2)
                 ssurgoDatasetDict.pop(survey, None)
 
         if len(missingSoilLayer) > 0:
-            AddMsgAndPrint(" \n\tThe following local SSURGO datasets are missing their soils shapefile:",2)
+            AddMsgAndPrint("\n\tThe following local SSURGO datasets are missing their soils shapefile:",2)
             for survey in missingSoilLayer:
-                AddMsgAndPrint(" \t\t" + survey,2)
+                AddMsgAndPrint("\t\t" + survey,2)
                 ssurgoDatasetDict.pop(survey, None)
 
         # --------------------------------------------------------------------  At this point everything checks out; Return Dictionary!
@@ -199,7 +196,7 @@ def validateSSAs(surveyList, wssLibrary):
         return ssurgoDatasetDict
 
     except:
-        AddMsgAndPrint(" \nUnhandled exception (validateSSAs)", 2)
+        AddMsgAndPrint("\nUnhandled exception (validateSSAs)", 2)
         print_exception()
         return ""
 
@@ -273,13 +270,13 @@ def createFGDB(regionChoice,outputFolder):
                 arcpy.Delete_management(os.path.join(outputFolder,newName + ".gdb"))
 
             except:
-                AddMsgAndPrint("\n Failed to Delte " + os.path.join(outputFolder,newName + ".gdb",2))
+                AddMsgAndPrint("\nFailed to Delte " + os.path.join(outputFolder,newName + ".gdb",2))
                 return ""
 
         arcpy.Rename_management(targetGDB,newName)
         arcpy.RefreshCatalog(os.path.join(outputFolder,newName + '.gdb'))
 
-        AddMsgAndPrint("\n" + "Successfully Created RTSD File GDB: " + newName + ".gdb")
+        AddMsgAndPrint("\nSuccessfully Created RTSD File GDB: " + newName + ".gdb")
 
         del targetGDB,FY,xmlFile
 
@@ -331,13 +328,13 @@ def parseDatumAndProjection(spatialReference):
 
         if userProjectionName != "" or userDatum != "":
 
-            AddMsgAndPrint(" \nUser-Defined Spatial Reference System:",0)
-            AddMsgAndPrint(" \tCoordinate System: " + userProjectionName,0)
-            AddMsgAndPrint(" \tDatum: " + userDatum,0)
+            AddMsgAndPrint("\nUser-Defined Spatial Reference System:",0)
+            AddMsgAndPrint("\tCoordinate System: " + userProjectionName,0)
+            AddMsgAndPrint("\tDatum: " + userDatum,0)
 
             # user spatial reference is the same as WGS84
             if WGS84_datum == userDatum:
-                AddMsgAndPrint(" \n\tNo Datum Transformation method required", 1)
+                AddMsgAndPrint("\n\tNo Datum Transformation method required", 1)
 
                 return userDatum,userProjectionName
 
@@ -358,37 +355,34 @@ def parseDatumAndProjection(spatialReference):
 
                 elif AOI == "Other":
                     tm = "NAD_1983_To_WGS_1984_1"
-                    PrintMsg(" \n\tWarning! No coordinate shift will being applied", 0)
+                    PrintMsg("\n\tWarning! No coordinate shift will being applied", 0)
 
                 else:
-                    raise MyError, "Invalid geographic region (" + AOI + ")"
+                    AddMsgAndPrint("Invalid geographic region (" + AOI + ")",2)
+                    exit()
 
                 arcpy.env.outputCoordinateSystem = spatialReference
                 arcpy.env.geographicTransformations = tm
-                AddMsgAndPrint(" \n\tUsing Datum Transformation Method '" + tm + "' for " + AOI, 1)
+                AddMsgAndPrint("\n\tUsing Datum Transformation Method '" + tm + "' for " + AOI, 1)
 
                 return userDatum,userProjectionName
 
             # user datum was something other than NAD83 or WGS84
             else:
-                raise MyError, " \n\tWarning! No Datum Transformation could be applied to " + userProjectionName + ".......EXITING!"
+                AddMsgAndPrint("\n\tWarning! No Datum Transformation could be applied to " + userProjectionName + ".......EXITING!",2)
                 return "",""
 
         # Could not parse CS name and datum
         else:
-            raise MyError, " \n\tCould not extract Spatial Reference Properties........Halting import process"
+            AddMsgAndPrint("\n\tCould not extract Spatial Reference Properties........Halting import process",2)
             return "",""
-
-    except MyError, e:
-        AddMsgAndPrint(str(e) + " \n", 2)
-        return "",""
 
     except arcpy.ExecuteError:
         AddMsgAndPrint(arcpy.GetMessages(2),2)
         return "",""
 
     except:
-        AddMsgAndPrint(" \nUnhandled exception (parseDatumAndProjection)", 2)
+        AddMsgAndPrint("\nUnhandled exception (parseDatumAndProjection)", 2)
         print_exception()
         return "",""
 
@@ -454,7 +448,7 @@ def createTopology(RTSD_FD):
         arcpy.SetProgressorLabel("Creating Topology")
         arcpy.CreateTopology_management(RTSD_FD, "FD_RTSD_Topology", 0.1)
         newTopology = os.path.join(RTSD_FD,"FD_RTSD_Topology")
-        AddMsgAndPrint(" \tCreated Topology: FD_RTSD_Topology at 0.1m cluster tolerance",0)
+        AddMsgAndPrint("\tCreated Topology: FD_RTSD_Topology at 0.1m cluster tolerance",0)
         arcpy.SetProgressorPosition()
 
         # Add feature classes to topology
@@ -464,7 +458,7 @@ def createTopology(RTSD_FD):
         arcpy.AddFeatureClassToTopology_management(newTopology, os.path.join(RTSD_FD,"MULINE"), 1, 1)
         arcpy.AddFeatureClassToTopology_management(newTopology, os.path.join(RTSD_FD,"FEATPOINT"), 1, 1)
         arcpy.AddFeatureClassToTopology_management(newTopology, os.path.join(RTSD_FD,"FEATLINE"), 1, 1)
-        AddMsgAndPrint(" \tAdded 5 Feature Classes to participate in the Topology",0)
+        AddMsgAndPrint("\tAdded 5 Feature Classes to participate in the Topology",0)
         arcpy.SetProgressorPosition()
 
         # Add Topology Rules
@@ -557,13 +551,13 @@ def ImportFeatureFiles(ssurgoDatasetDict):
                             del newRow
 
                         except:
-                            AddMsgAndPrint(" \tFailed to import line #" + str(i) + " for " + SSA + " feature file",2)
+                            AddMsgAndPrint("\tFailed to import line #" + str(i) + " for " + SSA + " feature file",2)
                             continue
 
-                    #AddMsgAndPrint(" \tSuccessfully Imported: " + str(textFileRecords) + " records",0)
+                    #AddMsgAndPrint("\tSuccessfully Imported: " + str(textFileRecords) + " records",0)
 
                     if i != textFileRecords:
-                        AddMsgAndPrint(" \tIncorrect # of records inserted for " + SSA,2)
+                        AddMsgAndPrint("\tIncorrect # of records inserted for " + SSA,2)
                         AddMsgAndPrint( "\t\tFeature file records: " + str(textFileRecords),2)
                         AddMsgAndPrint( "\t\tRecords Inserted: " + str(i),2)
                         importError.append(SSA)
@@ -575,11 +569,11 @@ def ImportFeatureFiles(ssurgoDatasetDict):
 
                 # feature file is empty, print a warning
                 else:
-                    AddMsgAndPrint(" \t" + SSA + " feature file is empty",1)
+                    AddMsgAndPrint("\t" + SSA + " feature file is empty",1)
                     emptyFiles += 1
 
             else:
-                AddMsgAndPrint(" \t" + SSA + " feature file is missing",2)
+                AddMsgAndPrint("\t" + SSA + " feature file is missing",2)
                 missingFiles.append(SSA)
 
             arcpy.SetProgressorPosition()
@@ -587,13 +581,13 @@ def ImportFeatureFiles(ssurgoDatasetDict):
 
         # Print any missing surveys
         if len(missingFiles) > 0:
-            AddMsgAndPrint(" \n\tThe following SSAs had missing feature files:",2)
+            AddMsgAndPrint("\n\tThe following SSAs had missing feature files:",2)
             for ssa in missingFiles:
                 AddMsgAndPrint( "\t\t" + ssa,2)
 
         # Print any SSAs that had errors importing
         if len(importError) > 0:
-            AddMsgAndPrint(" \n\tThe following SSAs had errors importing - Feature files should be looked at:",2)
+            AddMsgAndPrint("\n\tThe following SSAs had errors importing - Feature files should be looked at:",2)
             for ssa in importError:
                 AddMsgAndPrint( "\t\t" + ssa,2)
 
@@ -678,16 +672,20 @@ def addAttributeIndex(table,fieldList,verbose=True):
     try:
         # Make sure table exists. - Just in case
         if not arcpy.Exists(table):
-            AddMsgAndPrint("\tAttribute index cannot be created for: " + os.path.basename(table) + " TABLE DOES NOT EXIST",2)
+            AddMsgAndPrint("Attribute index cannot be created for: " + os.path.basename(table) + " TABLE DOES NOT EXIST",2)
             return False
+
+        else:
+            if verbose: AddMsgAndPrint("Adding Indexes to Table: " + os.path.basename(table))
 
         # iterate through every field
         for fieldToIndex in fieldList:
 
             # Make sure field exists in table - Just in case
             if not len(arcpy.ListFields(table,"*" + fieldToIndex))>0:
-                AddMsgAndPrint("\tAttribute index cannot be created for: " + fieldToIndex + ". FIELD DOES NOT EXIST",2)
-                continue
+                if verbose:
+                    AddMsgAndPrint("\tAttribute index cannot be created for: " + fieldToIndex + ". FIELD DOES NOT EXIST",2)
+                    continue
 
             # list of indexes (attribute and spatial) within the table that are
             # associated with the field or a field that has the field name in it.
@@ -711,8 +709,9 @@ def addAttributeIndex(table,fieldList,verbose=True):
 
                         # Field is already part of an existing index - Notify User
                         if fld.name == fieldToIndex:
-                            AddMsgAndPrint("\tAttribute Index for " + fieldToIndex + " field already exists",1)
-                            bFieldIndexExists = True
+                            if verbose:
+                                AddMsgAndPrint("\tAttribute Index for " + fieldToIndex + " field already exists",1)
+                                bFieldIndexExists = True
 
                     # Field is already part of an existing index - Proceed to next field
                     if bFieldIndexExists:
@@ -759,7 +758,8 @@ if __name__ == '__main__':
 
     # Bail if reginal master table is not found
     if not arcpy.Exists(regionalTable):
-        raise MyError, "\n" + "Regional Master Table is missing from " + os.path.dirname(sys.argv[0])
+        AddMsgAndPrint("\nRegional Master Table is missing from " + os.path.dirname(sys.argv[0]),2)
+        exit()
 
     startTime = datetime.now()
     env.overwriteOutput = True
@@ -772,7 +772,8 @@ if __name__ == '__main__':
 
         # Exit if list of regional areasymbol list is empty
         if not len(regionalASlist) > 0:
-            raise MyError, "\n\n" + "No Areasymbols were selected from Regional SSA Ownership table. Possible problem with table.....EXITING"
+            AddMsgAndPrint("\n\nNo Areasymbols were selected from Regional SSA Ownership table. Possible problem with table.....EXITING",2)
+            exit()
 
         # sort the regional list
         regionalASlist.sort()
@@ -782,23 +783,24 @@ if __name__ == '__main__':
         ssurgoDatasetDict = validateSSAs(regionalASlist,wssLibrary)
 
         if len(ssurgoDatasetDict) < 1:
-            raise MyError, "\nAll " + regionChoice + " SSURGO datasets are missing from " + os.path.basename(wssLibrary) + " directory \n\tThere must also not be duplicate SSURGO datasets"
+            AddMsgAndPrint("\nAll " + regionChoice + " SSURGO datasets are missing from " + os.path.basename(wssLibrary) + " directory \n\tThere must also not be duplicate SSURGO datasets",2)
+            exit()
 
         # There are some SSAs missing from local library
         elif len(regionalASlist) != len(ssurgoDatasetDict):
             AddMsgAndPrint("\n" + regionChoice + " is assigned " + str(len(regionalASlist)) + " SSAs --- Missing " + str(len(regionalASlist) - len(ssurgoDatasetDict)) + " SSAs" ,2)
             AddMsgAndPrint("\nALL SSURGO datasets assigned to " + regionChoice + " must be present to continue",2)
-            raise MyError, "Download missing SSURGO Datasets using the 'Download SSURGO by Region' tool"
-            #AddMsgAndPrint("Only " + str(len(ssurgoDatasetDict)) + " out of " + str(len(regionalASlist)) + " surveys will be imported to create the " + regionChoice + " Transactional Spatial Database",2)
+            AddMsgAndPrint("Download the missing SSURGO Datasets using the 'Download SSURGO by Region' tool",2)
+            exit()
 
         else:
             AddMsgAndPrint("\n" + str(len(regionalASlist)) + " surveys will be merged to create the " + regionChoice + " Transactional Spatial Database", 0)
 
-        # --------------------------------------------------------------------------------------Create Empty Regional Transactional File Geodatabase
+        # -------------------------------------------------------------------------------------- Create Empty Regional Transactional File Geodatabase
         RTSDname = createFGDB(regionChoice, outputFolder)
 
         if RTSDname == "":
-            raise MyError, " \n Failed to Initiate Empty Regional Transactional Database.  Error in createFGDB() function. Exiting!"
+            AddMsgAndPrint("\nFailed to Initiate Empty Regional Transactional Database.  Error in createFGDB() function. Exiting!",2)
 
         # Path to Regional FGDB
         FGDBpath = os.path.join(outputFolder,RTSDname)
@@ -824,11 +826,11 @@ if __name__ == '__main__':
         userDatum_Stop = spatialRef.find(",", userDatum_Start) - 1
         userDatum = spatialRef[userDatum_Start:userDatum_Stop]
 
-        AddMsgAndPrint(" \tOutput Coordinate System: " + arcpy.Describe(soilFC).spatialReference.name,0)
-        AddMsgAndPrint(" \tOutput Datum: " + userDatum,0)
+        AddMsgAndPrint("\tOutput Coordinate System: " + arcpy.Describe(soilFC).spatialReference.name,0)
+        AddMsgAndPrint("\tOutput Datum: " + userDatum,0)
 
         if userDatum == "D_North_American_1983":
-            AddMsgAndPrint(" \tGeographic Transformation: WGS_1984_(ITRF00)_To_NAD_1983",0 )
+            AddMsgAndPrint("\tGeographic Transformation: WGS_1984_(ITRF00)_To_NAD_1983",0 )
 
         env.geographicTransformations = "WGS_1984_(ITRF00)_To_NAD_1983"  # WKID 108190
         env.outputCoordinateSystem = spatialRef
@@ -936,7 +938,8 @@ if __name__ == '__main__':
             if arcpy.Exists(FGDBpath):
                 arcpy.Delete_management(FGDBpath)
 
-            raise MyError, " \n\n All surveys had incompatible datums! Datum needs to be in NAD83 or WGS84."
+            AddMsgAndPrint("\n\nAll surveys had incompatible datums! Datum needs to be in NAD83 or WGS84.",2)
+            exit()
 
         # set progressor object which allows progress information to be passed for every merge complete
         arcpy.SetProgressor("step", "Beginning the merge process...", 0, 6, 1)
@@ -976,11 +979,11 @@ if __name__ == '__main__':
             arcpy.Merge_management(muLineShpList, muLineFCpath, muLineFM)
             #arcpy.Append_management(muLineShpList, os.path.join(FDpath, muLineFC), "NO_TEST", muLineFM)
 
-            AddMsgAndPrint(" \tSuccessfully merged SSURGO Soil Mapunit Lines",0)
+            AddMsgAndPrint("\tSuccessfully merged SSURGO Soil Mapunit Lines",0)
             if not addAttributeIndex(muLineFCpath,["AREASYMBOL","MUSYM"]): pass
 
         else:
-            AddMsgAndPrint(" \tNo SSURGO Soil Mapunit Lines to merge",0)
+            AddMsgAndPrint("\tNo SSURGO Soil Mapunit Lines to merge",0)
 
         arcpy.SetProgressorPosition()
 
@@ -998,11 +1001,11 @@ if __name__ == '__main__':
             arcpy.Merge_management(muPointShpList, muPointFCpath, muPointFM)
             #arcpy.Append_management(muPointShpList, os.path.join(FDpath, muPointFC), "NO_TEST", muPointFM)
 
-            AddMsgAndPrint(" \tSuccessfully merged SSURGO Soil Mapunit Points",0)
+            AddMsgAndPrint("\tSuccessfully merged SSURGO Soil Mapunit Points",0)
             if not addAttributeIndex(muPointFCpath,["AREASYMBOL","MUSYM"]): pass
 
         else:
-            AddMsgAndPrint(" \tNo SSURGO Soil Mapunit Points to merge",0)
+            AddMsgAndPrint("\tNo SSURGO Soil Mapunit Points to merge",0)
 
         arcpy.SetProgressorPosition()
 
@@ -1018,7 +1021,7 @@ if __name__ == '__main__':
         arcpy.Merge_management(soilSaShpList, soilSaFCpath, soilSaFM)
         #arcpy.Append_management(soilSaShpList, os.path.join(FDpath, soilSaFC), "NO_TEST", soilSaFM)
 
-        AddMsgAndPrint(" \tSuccessfully merged SSURGO Soil Survey Area Polygons",0)
+        AddMsgAndPrint("\tSuccessfully merged SSURGO Soil Survey Area Polygons",0)
         if not addAttributeIndex(soilSaFCpath,["AREASYMBOL"]): pass
 
         arcpy.SetProgressorPosition()
@@ -1037,11 +1040,11 @@ if __name__ == '__main__':
             arcpy.Merge_management(featPointShpList, featPointFCpath, featPointFM)
             #arcpy.Append_management(featPointShpList, os.path.join(FDpath, featPointFC), "NO_TEST", featPointFM)
 
-            AddMsgAndPrint(" \tSuccessfully merged SSURGO Special Point Features",0)
+            AddMsgAndPrint("\tSuccessfully merged SSURGO Special Point Features",0)
             if not addAttributeIndex(featPointFCpath,["AREASYMBOL", "FEATSYM"]): pass
 
         else:
-            AddMsgAndPrint(" \tNo SSURGO Soil Special Point Features to merge",0)
+            AddMsgAndPrint("\tNo SSURGO Soil Special Point Features to merge",0)
 
         arcpy.SetProgressorPosition()
 
@@ -1059,16 +1062,16 @@ if __name__ == '__main__':
             arcpy.Merge_management(featLineShpList, featLineFCpath, featLineFM)
             #arcpy.Append_management(featLineShpList, os.path.join(FDpath, featLineFC), "NO_TEST", featLineFM)
 
-            AddMsgAndPrint(" \tSuccessfully merged SSURGO Special Line Features",0)
+            AddMsgAndPrint("\tSuccessfully merged SSURGO Special Line Features",0)
             if not addAttributeIndex(featLineFCpath,["AREASYMBOL", "FEATSYM"]): pass
 
         else:
-            AddMsgAndPrint(" \tNo SSURGO Special Line Features to merge",0)
+            AddMsgAndPrint("\tNo SSURGO Special Line Features to merge",0)
 
         arcpy.SetProgressorPosition()
         arcpy.ResetProgressor()
 
-        # --------------------------------------------------------------------------------------------- Import Feature descriptions
+        # ---------------------------------------------------------------------------------------------------------- Import Feature descriptions
         if not ImportFeatureFiles(ssurgoDatasetDict):
             AddMsgAndPrint("\nError importing feature files into the featdesc table",2)
 
@@ -1077,10 +1080,10 @@ if __name__ == '__main__':
         if createTopology(FDpath):
             arcpy.SetProgressorLabel("Validating Topology at 0.1 meters")
             arcpy.ValidateTopology_management(os.path.join(FDpath,"FD_RTSD_Topology"))
-            AddMsgAndPrint(" \tValidated Topology at 0.1 meters",0)
+            AddMsgAndPrint("\tValidated Topology at 0.1 meters",0)
 
         else:
-            AddMsgAndPrint(" \n\tFailed to Create Topology. Create Topology Manually",2)
+            AddMsgAndPrint("\n\tFailed to Create Topology. Create Topology Manually",2)
 
         # Create Relationship class between project_record and SAPOLYGON feature class
         arcpy.SetProgressorLabel("Creating Relationship Class between Project_Record & SAPOLYGON")
@@ -1088,31 +1091,31 @@ if __name__ == '__main__':
         saPolyPath = os.path.join(FDpath,soilSaFC)
         relName = "x" + prjRecTable.capitalize() + "_" + soilSaFC
         arcpy.CreateRelationshipClass_management(prjRecTable, saPolyPath, relName, "SIMPLE", "> SAPOLYGON", "< Project_Record", "NONE", "ONE_TO_ONE", "NONE", "AREASYMBOL", "AREASYMBOL", "", "")
-        AddMsgAndPrint("\n" + "Successfully Created Relationship Class")
+        AddMsgAndPrint("\nSuccessfully Created Relationship Class")
 
         arcpy.SetProgressorLabel("Compacting " + os.path.basename(FGDBpath))
         arcpy.Compact_management(FGDBpath)
-        AddMsgAndPrint("\n" + "Successfully Compacted " + os.path.basename(FGDBpath))
+        AddMsgAndPrint("\nSuccessfully Compacted " + os.path.basename(FGDBpath))
 
+        # -----------------------------------------------------------------------------  Add Field Aliases to Spatial Layers -tabular already has aliases embedded.
         if updateAliasNames(regionChoice, FDpath):
             AddMsgAndPrint("\nSuccessfully Updated Alias Names for Feature Classes within " + os.path.basename(FGDBpath))
         else:
             AddMsgAndPrint("\nUnable to Update Alias Names for Feature Classes within " + os.path.basename(FGDBpath),2)
 
         # -----------------------------------------------------------------------------------------
-        AddMsgAndPrint(" \n*****************************************************************************************",1)
+        AddMsgAndPrint("\n*****************************************************************************************",1)
         AddMsgAndPrint("Total # of SSURGO Datasets Appended: " + str(splitThousands(len(soilShpList))),1)
-        AddMsgAndPrint(" \tTotal # of Mapunit Polygons: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + soilFC).getOutput(0))),1)
-        AddMsgAndPrint(" \tTotal # of Mapunit Lines: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + muLineFC).getOutput(0))),1)
-        AddMsgAndPrint(" \tTotal # of Mapunit Points: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + muPointFC).getOutput(0))),1)
-        AddMsgAndPrint(" \tTotal # of Special Feature Points: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + featPointFC).getOutput(0))),1)
-        AddMsgAndPrint(" \tTotal # of Special Feature Lines: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + featLineFC).getOutput(0))),1)
+        AddMsgAndPrint("\tTotal # of Mapunit Polygons: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + soilFC).getOutput(0))),1)
+        AddMsgAndPrint("\tTotal # of Mapunit Lines: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + muLineFC).getOutput(0))),1)
+        AddMsgAndPrint("\tTotal # of Mapunit Points: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + muPointFC).getOutput(0))),1)
+        AddMsgAndPrint("\tTotal # of Special Feature Points: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + featPointFC).getOutput(0))),1)
+        AddMsgAndPrint("\tTotal # of Special Feature Lines: " + str(splitThousands(arcpy.GetCount_management(FDpath + os.sep + featLineFC).getOutput(0))),1)
 
         arcpy.RefreshCatalog(outputFolder)
 
         endTime = datetime.now()
-        AddMsgAndPrint(" \nTotal Time: " + str(endTime - startTime),0)
-
+        AddMsgAndPrint("\nTotal Time: " + str(endTime - startTime),0)
 
     # This is where the fun ends!
     except arcpy.ExecuteError:

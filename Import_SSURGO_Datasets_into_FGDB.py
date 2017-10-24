@@ -125,7 +125,7 @@
 #       to remove continue statements from within if statements.  So many versions were created in an effort to
 #       troubleshoot this problem that I decided to print the version of the script in the log file.
 #
-#  Last updated 2/22/2017
+#  Last updated 10/24/2017
 #
 # Beginning of Functions
 
@@ -969,7 +969,7 @@ if __name__ == '__main__':
         # process each selected soil survey
         AddMsgAndPrint("\nValidating " + str(len(surveyList)) + " selected surveys...", 0)
 
-        # --------------------------------------------------------------------------------------Create necessary File Geodatabase
+        # -------------------------------------------------------------------------------------- Create necessary File Geodatabase
         # Create new File Geodatabase, Feature Dataset and Feature Classes.
 
         # SSURGO layer Name
@@ -1029,7 +1029,7 @@ if __name__ == '__main__':
             AddMsgAndPrint("\nCannot handle user Datum: " + str(userDatum) + " Exiting",2)
             sys.exit()
 
-        # ---------------------------------------------------------------------------------------Begin the Merging Process
+        # --------------------------------------------------------------------------------------- Begin the Merging Process
 
         # Dictionary containing approx center of SSA (key) and the SSURGO layer path (value)
         soilShpDict = dict() # {-4002.988250799742: 'K:\\FY2014_SSURGO_R10_download\\soils_wi063\\spatial\\soilmu_a_wi063.shp'}
@@ -1275,6 +1275,7 @@ if __name__ == '__main__':
         # Strictly Formatting
         AddMsgAndPrint("\n-------------------------------------------------------------------------------------------------------",1)
 
+        # ----------------------------------------------------------------------------------------------------------------------------- Begin the Import Tabular Process
         # Import tabular data if option was selected
         if b_importTabularData:
 
@@ -1335,9 +1336,7 @@ if __name__ == '__main__':
                     AddMsgAndPrint("\t\t.....Tabular Folder is missing for: " + SSA,1)
 
                 del tabularFolder, spatialFolder
-
                 i += 1
-
             del i
 
             # establish relationships if mapunit Table is not empty
@@ -1383,7 +1382,6 @@ if __name__ == '__main__':
 
                 i += 1
                 del SSA, spatialFolder
-
             del i
 
         # -----------------------------------------------------------------------------  Add Field Aliases to Spatial Layers -tabular already has aliases embedded.
@@ -1411,7 +1409,7 @@ if __name__ == '__main__':
 ##
 ##            if not addAttributeIndex(tablePath,fieldNames): continue
 
-
+        # ------------------------------------------------------------------------------ Summarize output dataset
         AddMsgAndPrint("\n******************************************************************************************************************",1)
         AddMsgAndPrint("Total # of SSURGO Datasets Appended: " + str(splitThousands(len(soilShpList))),1)
         AddMsgAndPrint("\tTotal # of Mapunit Polygons: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + soilFC).getOutput(0))),1)

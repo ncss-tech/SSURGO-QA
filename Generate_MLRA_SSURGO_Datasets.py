@@ -1,6 +1,6 @@
 # Import_SSURGO_Datasets_into_FGDB_ArcGIS10
 #
-# 4/27/2012
+# Created 4/27/2012
 #
 # Adolfo Diaz, MLRA GIS Specialist
 # USDA - Natural Resources Conservation Service
@@ -125,10 +125,9 @@
 #       to remove continue statements from within if statements.  So many versions were created in an effort to
 #       troubleshoot this problem that I decided to print the version of the script in the log file.
 #
+# Last Modified:  10/24/2017
+#
 # Beginning of Functions
-## ===================================================================================
-class MyError(Exception):
-    pass
 
 ## ===================================================================================
 def print_exception():
@@ -382,7 +381,8 @@ def parseDatumAndProjection(spatialReference):
                     PrintMsg(" \n\tWarning! No coordinate shift will being applied", 0)
 
                 else:
-                    raise MyError, "Invalid geographic region (" + AOI + ")"
+                    AddMsgAndPrint("Invalid geographic region (" + AOI + ")",2)
+                    exit()
 
                 arcpy.env.outputCoordinateSystem = spatialReference
                 arcpy.env.geographicTransformations = tm
@@ -392,12 +392,12 @@ def parseDatumAndProjection(spatialReference):
 
             # user datum was something other than NAD83
             else:
-                raise MyError, "\n\tWarning! No Datum Transformation could be applied to " + userProjectionName
+                AddMsgAndPrint("\n\tWarning! No Datum Transformation could be applied to " + userProjectionName,2)
                 return "",""
 
         # Could not parse CS name and datum
         else:
-            raise MyError, "\n\tCould not extract Spatial Reference Properties........Halting import process"
+            AddMsgAndPrint("\n\tCould not extract Spatial Reference Properties........Halting import process",2)
             return "",""
 
     except MyError, e:
@@ -1064,16 +1064,20 @@ def addAttributeIndex(table,fieldList,verbose=True):
     try:
         # Make sure table exists. - Just in case
         if not arcpy.Exists(table):
-            AddMsgAndPrint("\tAttribute index cannot be created for: " + os.path.basename(table) + " TABLE DOES NOT EXIST",2)
+            AddMsgAndPrint("Attribute index cannot be created for: " + os.path.basename(table) + " TABLE DOES NOT EXIST",2)
             return False
+
+        else:
+            if verbose: AddMsgAndPrint("Adding Indexes to Table: " + os.path.basename(table))
 
         # iterate through every field
         for fieldToIndex in fieldList:
 
             # Make sure field exists in table - Just in case
             if not len(arcpy.ListFields(table,"*" + fieldToIndex))>0:
-                AddMsgAndPrint("\tAttribute index cannot be created for: " + fieldToIndex + ". FIELD DOES NOT EXIST",2)
-                continue
+                if verbose:
+                    AddMsgAndPrint("\tAttribute index cannot be created for: " + fieldToIndex + ". FIELD DOES NOT EXIST",2)
+                    continue
 
             # list of indexes (attribute and spatial) within the table that are
             # associated with the field or a field that has the field name in it.
@@ -1097,8 +1101,9 @@ def addAttributeIndex(table,fieldList,verbose=True):
 
                         # Field is already part of an existing index - Notify User
                         if fld.name == fieldToIndex:
-                            AddMsgAndPrint("\tAttribute Index for " + fieldToIndex + " field already exists",1)
-                            bFieldIndexExists = True
+                            if verbose:
+                                AddMsgAndPrint("\tAttribute Index for " + fieldToIndex + " field already exists",1)
+                                bFieldIndexExists = True
 
                     # Field is already part of an existing index - Proceed to next field
                     if bFieldIndexExists:
@@ -1147,11 +1152,13 @@ if __name__ == '__main__':
     mlraBufferTable = os.path.join(os.path.join(os.path.dirname(sys.argv[0]),"SSURGO_Soil_Survey_Area.gdb"),"SSA_by_MLRA_buffer")
 
     if not os.path.exists(ssurgoTemplate):
-        raise MyError, "\nSSURGO_Table_Template.gdb does not exist in " + os.path.dirname(sys.argv[0])
+        AddMsgAndPrint("\nSSURGO_Table_Template.gdb does not exist in " + os.path.dirname(sys.argv[0]),2)
+        exit()
 
     # Bail if reginal master table is not found
     if not arcpy.Exists(mlraBufferTable):
-        raise MyError, "\nMLRA Buffer Table is missing from " + os.path.dirname(sys.argv[0])
+        AddMsgAndPrint("\nMLRA Buffer Table is missing from " + os.path.dirname(sys.argv[0]),2)
+        exit()
 
     env.overwriteOutput = True
 
@@ -1449,9 +1456,7 @@ if __name__ == '__main__':
                     continue
 
                 del tabularFolder, spatialFolder
-
                 i += 1
-
             del i
 
             # establish relationships if mapunit Table is not empty
@@ -1461,12 +1466,19 @@ if __name__ == '__main__':
                 if not CreateTableRelationships(tblAliases):
                     AddMsgAndPrint("\n\tCreateTableRelationships failed", 2)
 
+            # -----------------------------------------------------------------------------  Add Field Aliases to Spatial Layers -tabular already has aliases embedded.
             if updateAliasNames(mlra, FGDBpath):
-                AddMsgAndPrint("\tSuccessfully Updated Alias Names for Feature Classes within " + os.path.basename(FGDBpath))
+                AddMsgAndPrint("\nSuccessfully updated alias names for feature classes within " + os.path.basename(FGDBpath))
             else:
-                AddMsgAndPrint("\tUnable to Update Alias Names for Feature Classes within " + os.path.basename(FGDBpath),2)
+                AddMsgAndPrint("\nUnable to update alias names for feature classes within " + os.path.basename(FGDBpath),2)
 
-            # -----------------------------------------------------------------------------------------
+            # ----------------------------------------------------------------------------- Add Attribute Index to specific tables
+            arcpy.SetProgressorLabel("Adding Attribute Indexes")
+            if not addAttributeIndex(os.path.join(FGDBpath,"mapunit"),["musym", "muname","mukind","farmlndcl"],False): pass
+            if not addAttributeIndex(os.path.join(FGDBpath,"component"),["comppct_r","compname", "compkind","majcompflag","slope_r","taxorder","taxsuborder","taxgrtgroup","taxsubgrp","taxpartsize"],False): pass
+            if not addAttributeIndex(os.path.join(FGDBpath,"muaggatt"),["musym","muname","mustatus","flodfreqdcd","drclassdcd","hydgrpdcd","hydclprs"],False):pass
+
+            # --------------------------------------------------------------------------------------------------------------------- Summarize output dataset
             AddMsgAndPrint("\n\tTotal # of SSURGO Datasets Appended: " + str(splitThousands(len(soilShpList))),0)
             AddMsgAndPrint("\t\tTotal # of Mapunit Polygons: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + soilFC).getOutput(0))),0)
             AddMsgAndPrint("\t\tTotal # of Mapunit Lines: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + muLineFC).getOutput(0))),0)
@@ -1474,10 +1486,6 @@ if __name__ == '__main__':
             AddMsgAndPrint("\t\tTotal # of Special Feature Points: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + featPointFC).getOutput(0))),0)
             AddMsgAndPrint("\t\tTotal # of Special Feature Lines: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + featLineFC).getOutput(0))),0)
             AddMsgAndPrint("\n",0)
-
-            del mlraAS, mlraDatasetDict, mlraGDB, FGDBpath, spatialRef, userDatum_Start, userDatum_Stop, userDatum
-            del soilShpDict, muLineShpDict, muPointShpDict, soilSaShpDict, featPointShpDict, featLineShpDict
-            del soilShpList, muLineShpList, muPointShpList, soilSaShpList, featPointShpList, featLineShpList, extentList
 
             arcpy.RefreshCatalog(outputFolder)
 

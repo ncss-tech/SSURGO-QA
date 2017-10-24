@@ -181,8 +181,8 @@ def GetPublicationDate(areaSym):
 
         # Create request using JSON, return data as JSON
         dRequest = dict()
-        dRequest["FORMAT"] = "JSON"
-        dRequest["QUERY"] = sQuery
+        dRequest["format"] = "JSON"
+        dRequest["query"] = sQuery
         jData = json.dumps(dRequest)  # {"QUERY": "SELECT AREASYMBOL, AREANAME, CONVERT(varchar(10), [SAVEREST], 126) AS SAVEREST FROM SASTATUSMAP WHERE AREASYMBOL LIKE \'WI025\' ORDER BY AREASYMBOL", "FORMAT": "JSON"}
 
         # Send request to SDA Tabular service using urllib2 library
