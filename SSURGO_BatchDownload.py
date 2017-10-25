@@ -67,9 +67,6 @@
 # ID604, ID670, WA651
 #
 # 2016-12-16 Converted the SOAP request to POST-REST request to SDaccess.  A.D.
-## ===================================================================================
-class MyError(Exception):
-    pass
 
 ## ===================================================================================
 def errorMsg():
@@ -77,28 +74,34 @@ def errorMsg():
         tb = sys.exc_info()[2]
         tbinfo = traceback.format_tb(tb)[0]
         theMsg = tbinfo + " \n" + str(sys.exc_type)+ ": " + str(sys.exc_value) + " \n"
-        PrintMsg(theMsg, 2)
+        AddMsgAndPrint(theMsg, 2)
 
     except:
-        PrintMsg("Unhandled error in errorMsg method", 2)
+        AddMsgAndPrint("Unhandled error in errorMsg method", 2)
         pass
 
-## ===================================================================================
-def PrintMsg(msg, severity=0):
+## ================================================================================================================
+def AddMsgAndPrint(msg, severity=0):
+    # prints message to screen if run as a python script
     # Adds tool message to the geoprocessor
     #
-    #Split the message on \n first, so that if it's multiple lines, a GPMessage will be added for each line
+    # Split the message on \n first, so that if it's multiple lines, a GPMessage will be added for each line
+
     try:
-        for string in msg.split('\n'):
-            #Add a geoprocessing message (in case this is run as a tool)
-            if severity == 0:
-                arcpy.AddMessage(string)
 
-            elif severity == 1:
-                arcpy.AddWarning(string)
+        #print msg
+        #for string in msg.split('\n'):
 
-            elif severity == 2:
-                arcpy.AddError(" \n" + string)
+        # Add a geoprocessing message (in case this is run as a tool)
+        if severity == 0:
+            arcpy.AddMessage(msg)
+
+        elif severity == 1:
+            arcpy.AddWarning(msg)
+
+        elif severity == 2:
+            arcpy.AddMessage("    ")
+            arcpy.AddError(msg)
 
     except:
         pass
@@ -267,7 +270,8 @@ def SSURGOVersion(newDB, tabularFolder):
         versionTxt = os.path.join(tabularFolder, "version.txt")
 
         if not arcpy.Exists(newDB):
-            raise MyError, "Missing input database (" + newDB + ")"
+            AddMsgAndPrint("Missing input database (" + newDB + ")",2)
+            return False
 
         if arcpy.Exists(versionTxt):
             # read just the first line of the version.txt file
@@ -277,7 +281,7 @@ def SSURGOVersion(newDB, tabularFolder):
 
         else:
             # Unable to compare vesions. Warn user but continue
-            PrintMsg("Unable to find file: version.txt", 1)
+            AddMsgAndPrint("Unable to find file: version.txt", 1)
             return True
 
         systemInfo = os.path.join(newDB, "SYSTEM - Template Database Information")
@@ -290,26 +294,21 @@ def SSURGOVersion(newDB, tabularFolder):
                 for rec in srcCursor:
                     if rec[0] == "SSURGO Version":
                         dbVersion = str(rec[2]).split(".")[0]
-                        #PrintMsg("\tSSURGO Version from DB: " + dbVersion, 1)
+                        #AddMsgAndPrint("\tSSURGO Version from DB: " + dbVersion, 1)
 
             del systemInfo
             del newDB
 
             if txtVersion != dbVersion:
                 # SSURGO Versions do not match. Warn user but continue
-                PrintMsg("Discrepancy in SSURGO Version number for Template database and SSURGO download", 1)
+                AddMsgAndPrint("Discrepancy in SSURGO Version number for Template database and SSURGO download", 1)
 
         else:
             # Unable to open SYSTEM table in existing dataset
             # Warn user but continue
-            PrintMsg("Unable to open 'SYSTEM - Template Database Information'", 1)
+            AddMsgAndPrint("Unable to open 'SYSTEM - Template Database Information'", 1)
 
         return True
-
-    except MyError, e:
-        # Example: raise MyError, "This is an error message"
-        PrintMsg(str(e), 2)
-        return False
 
     except:
         errorMsg()
@@ -345,17 +344,10 @@ def GetTemplateDate(newDB):
             dbDate = int(dateObj.strftime(intDate))
 
         else:
-            raise MyError, "SACATALOG table in Template database not found"
-
-        del saCatalog
-        del newDB
+            AddMsgAndPrint("SACATALOG table in Template database not found",2)
+            return 0
 
         return dbDate
-
-    except MyError, e:
-        # Example: raise MyError, "This is an error message"
-        PrintMsg(str(e), 2)
-        return 0
 
     except:
         errorMsg()
@@ -389,7 +381,7 @@ def GetTabularDate(newFolder):
             tabDate = int(dateObj.strftime(intDate))
 
         else:
-            PrintMsg(" \nUnable to find file: " + saCatalog, 1)
+            AddMsgAndPrint(" \nUnable to find file: " + saCatalog, 1)
 
         return tabDate
 
@@ -436,7 +428,7 @@ def GetDownload(areasym, surveyDate, importDB):
 
         zipURL = baseURL + zipName
 
-        PrintMsg("\tDownloading survey " + areaSym + " from Web Soil Survey...", 0)
+        AddMsgAndPrint("\tDownloading survey " + areaSym + " from Web Soil Survey...", 0)
 
         # Open request to Web Soil Survey for that zip file
         request = urlopen(zipURL)
@@ -460,29 +452,29 @@ def GetDownload(areasym, surveyDate, importDB):
 
     except URLError, e:
         if hasattr(e, 'reason'):
-            PrintMsg("\t\t" + areaSym + " - URL Error: " + str(e.reason), 1)
+            AddMsgAndPrint("\t\t" + areaSym + " - URL Error: " + str(e.reason), 1)
 
         elif hasattr(e, 'code'):
-            PrintMsg("\t\t" + zipName + " - " + e.msg + " (errorcode " + str(e.code) + ")", 1)
+            AddMsgAndPrint("\t\t" + zipName + " - " + e.msg + " (errorcode " + str(e.code) + ")", 1)
 
         return ""
 
     except socket.timeout, e:
-        PrintMsg("\t\t" + areaSym + " - server timeout error", 1)
+        AddMsgAndPrint("\t\t" + areaSym + " - server timeout error", 1)
         return ""
 
     except socket.error, e:
-        PrintMsg("\t\t" + areasym + " - Web Soil Survey connection failure", 1)
+        AddMsgAndPrint("\t\t" + areasym + " - Web Soil Survey connection failure", 1)
         return ""
 
     except httplib.BadStatusLine:
-        PrintMsg("\t\t" + areasym + " - Web Soil Survey connection failure", 1)
+        AddMsgAndPrint("\t\t" + areasym + " - Web Soil Survey connection failure", 1)
         return ""
 
     except:
         # problem deleting partial zip file after connection error?
         # saw some locked, zero-byte zip files associated with connection errors
-        PrintMsg("\tFailed to download zipfile", 0)
+        AddMsgAndPrint("\tFailed to download zipfile", 0)
         errorMsg()
         return ""
         sleep(1)
@@ -493,7 +485,7 @@ def CheckExistingDataset(areaSym, surveyDate, newFolder, newDB):
 
     try:
         bNewer = True  # Default setting should result in overwriting the current data if it already exists
-        #PrintMsg(" \nChecking newFolder: " + newFolder, 1)
+        #AddMsgAndPrint(" \nChecking newFolder: " + newFolder, 1)
 
         if os.path.isdir(newFolder):
             # This survey appears to have already been downloaded. Check to see if it is complete.
@@ -519,48 +511,50 @@ def CheckExistingDataset(areaSym, surveyDate, newFolder, newDB):
                 # Template database exists, get date from the SACATALOG table
                 dbDate = GetTemplateDate(newDB)
                 if dbDate == 0:
-                    PrintMsg(" \nLocal dataset " + areaSym + " already exists but is incomplete", 1)
+                    AddMsgAndPrint(" \nLocal dataset " + areaSym + " already exists but is incomplete", 1)
 
                 else:
-                    PrintMsg(" \nLocal dataset for " + areaSym + " already exists (date of " + str(dbDate) + ")", 0)
+                    AddMsgAndPrint(" \nLocal dataset for " + areaSym + " already exists (date of " + str(dbDate) + ")", 0)
 
             else:
                 # Missing database even though a path was given by the user
-                PrintMsg("\tMissing database (" + newDB + ")", 1)
+                AddMsgAndPrint("\tMissing database (" + newDB + ")", 1)
                 dbDate = 0
 
             if dbDate == 0:
                 # Could not get SAVEREST date from database, assume old dataset is incomplete and overwrite
-                #PrintMsg("\tLocal dataset is incomplete and will be overwritten", 1)
+                #AddMsgAndPrint("\tLocal dataset is incomplete and will be overwritten", 1)
                 shutil.rmtree(newFolder, True)
                 sleep(3)
                 bNewer = True
 
                 if arcpy.Exists(newFolder):
-                    raise MyError, "Failed to delete old dataset (" + newFolder + ")"
+                    AddMsgAndPrint("Failed to delete old dataset (" + newFolder + ")",2)
+                    return False
 
             else:
                 # Compare SDM date with local database date
                 if surveyDate > dbDate:
                     # Downloaded data is newer than the local copy. Delete and replace with new data.
                     #
-                    #PrintMsg("\tReplacing local dataset with newer download", 1)
+                    #AddMsgAndPrint("\tReplacing local dataset with newer download", 1)
                     bNewer = True
                     # delete old data folder
                     shutil.rmtree(newFolder, True)
                     sleep(3)
 
                     if arcpy.Exists(newFolder):
-                        raise MyError, "Failed to delete old dataset (" + newFolder + ")"
+                        AddMsgAndPrint("Failed to delete old dataset (" + newFolder + ")",2)
+                        return False
 
                 else:
                     # according to the filename-date, the WSS version is the same or older
                     # than the local Template DB, skip download for this survey
                     if surveyDate == dbDate:
-                        PrintMsg(" \nSkipping survey " + areaSym + ", local version is already current", 1)
+                        AddMsgAndPrint(" \nSkipping survey " + areaSym + ", local version is already current", 1)
 
                     else:
-                        PrintMsg(" \nSkipping survey " + areaSym + ", local version is newer (" + str(dbDate) + ") than the WSS data!?", 1)
+                        AddMsgAndPrint(" \nSkipping survey " + areaSym + ", local version is newer (" + str(dbDate) + ") than the WSS data!?", 1)
 
                     bNewer = False
 
@@ -569,11 +563,6 @@ def CheckExistingDataset(areaSym, surveyDate, newFolder, newDB):
             bNewer = True
 
         return bNewer
-
-    except MyError, e:
-        # Example: raise MyError, "This is an error message"
-        PrintMsg(str(e), 2)
-        return False
 
     except:
         errorMsg()
@@ -618,7 +607,7 @@ def ProcessSurvey(outputFolder, importDB, areaSym, bImport, bRemoveTXT, iGet, iT
             # Get new SSURGO download or replace an older version of the same survey
             # Otherwise skip download
             #
-            PrintMsg(" \nProcessing survey " + areaSym + " (" + str(iGet) + " of " + str(iTotal) + "):  " + surveyName, 0)
+            AddMsgAndPrint(" \nProcessing survey " + areaSym + " (" + str(iGet) + " of " + str(iTotal) + "):  " + surveyName, 0)
 
             # First attempt to download zip file
             zipName = GetDownload(areaSym, surveyDate, importDB)
@@ -658,11 +647,6 @@ def ProcessSurvey(outputFolder, importDB, areaSym, bImport, bRemoveTXT, iGet, iT
             # skip it
             return "Skipped"
 
-    except MyError, e:
-        # Example: raise MyError, "This is an error message"
-        PrintMsg(str(e), 2)
-        return "Failed"
-
     except:
         errorMsg()
         return "Failed"
@@ -681,7 +665,7 @@ def UnzipDownload(outputFolder, newFolder, importDB, zipName ):
             if zipSize > 0:
 
                 # Download appears to be successful
-                PrintMsg("\tUnzipping " + zipName + " (" + Number_Format(zipSize, 3, True) + " MB)...", 0)
+                AddMsgAndPrint("\tUnzipping " + zipName + " (" + Number_Format(zipSize, 3, True) + " MB)...", 0)
 
                 with zipfile.ZipFile(local_zip, "r") as z:
                     # a bad zip file returns exception zipfile.BadZipFile
@@ -708,12 +692,13 @@ def UnzipDownload(outputFolder, newFolder, importDB, zipName ):
 
                 else:
                     # none of the subfolders within the zip file match any of the expected names
-                    raise MyError, "Subfolder within the zip file does not match any of the standard names"
+                    AddMsgAndPrint("Subfolder within the zip file does not match any of the standard names",2)
+                    return False
 
             else:
                 # Downloaded a zero-byte zip file
                 # download for this survey failed, may try again
-                PrintMsg("\tEmpty zip file downloaded for " + areaSym + ": " + surveyName, 1)
+                AddMsgAndPrint("\tEmpty zip file downloaded for " + areaSym + ": " + surveyName, 1)
                 os.remove(local_zip)
 
             return True
@@ -721,16 +706,11 @@ def UnzipDownload(outputFolder, newFolder, importDB, zipName ):
         else:
             # Don't have a zip file, need to find out circumstances and document
             # rename downloaded database using standard convention, skip import
-            raise MyError, "Missing zip file (" + local_zip + ")"
+            AddMsgAndPrint("Missing zip file (" + local_zip + ")",2)
             return False
 
-    except MyError, e:
-        # Example: raise MyError, "This is an error message"
-        PrintMsg(str(e), 2)
-        return False
-
     except zipfile.BadZipfile:
-        PrintMsg("Bad zip file?", 2)
+        AddMsgAndPrint("Bad zip file?", 2)
         return False
 
     except:
@@ -771,7 +751,7 @@ def GetTableInfo(newDB):
                     # as Key and alias as Value.
                     #if not physicalName in tblAliases:
                     if not importFileName in tblInfo:
-                        #PrintMsg("\t" + importFileName + ": " + physicalName, 1)
+                        #AddMsgAndPrint("\t" + importFileName + ": " + physicalName, 1)
                         tblInfo[importFileName] = physicalName, aliasName
 
             del theMDTable
@@ -780,14 +760,8 @@ def GetTableInfo(newDB):
 
         else:
             # The mdstattabs table was not found
-            raise MyError, "Missing mdstattabs table"
+            AddMsgAndPrint("Missing mdstattabs table",2)
             return tblInfo
-
-
-    except MyError, e:
-        # Example: raise MyError, "This is an error message"
-        PrintMsg(str(e), 2)
-        return tblInfo
 
     except:
         errorMsg()
@@ -820,7 +794,8 @@ def SortMapunits(newDB):
         sysFields = ["lseq", "museq", "lkey", "mukey"]
         sysTbl = os.path.join(newDB, "SYSTEM - Mapunit Sort Specifications")
         if not arcpy.Exists(sysTbl):
-            raise MyError, "Could not find " + sysTbl
+            AddMsgAndPrint("Could not find " + sysTbl,2)
+            return False
 
         arcpy.MakeQueryTable_management(inputTbls, queryTbl, "ADD_VIRTUAL_KEY_FIELD", "", fldList, sqlJoin)
 
@@ -860,7 +835,7 @@ def SortMapunits(newDB):
         with arcpy.da.InsertCursor(sysTbl, "*") as outCur:
 
             for areaSym in areaList:
-                #PrintMsg(" \nProcessing survey: " + areaSym, 1)
+                #AddMsgAndPrint(" \nProcessing survey: " + areaSym, 1)
                 lseq += 1
                 musymList = sorted(dMapunitSort[areaSym], key = alphanum_key)
 
@@ -876,7 +851,7 @@ def SortMapunits(newDB):
         # from COINTERP fields: cointerpkey and seqnum
         # I am assuming that the cointerp table is already sorted. Is that safe??
         #
-        #PrintMsg("\tUpdating SYSTEM - Interp Depth Sequence", 1)
+        #AddMsgAndPrint("\tUpdating SYSTEM - Interp Depth Sequence", 1)
         inTbl = os.path.join(newDB, "cointerp")
         inFlds = ["cointerpkey", "seqnum"]
         outTbl = os.path.join(newDB, "SYSTEM - INTERP DEPTH SEQUENCE")
@@ -890,11 +865,6 @@ def SortMapunits(newDB):
                 outCur.insertRow(inRec)
 
         return True
-
-    except MyError, e:
-        # Example: raise MyError, "This is an error message"
-        PrintMsg(str(e), 2)
-        return False
 
     except:
         errorMsg()
@@ -916,29 +886,31 @@ def ImportTabular(areaSym, newFolder, importDB, newDB, bRemoveTXT):
         env.workspace = os.path.join(newFolder, "tabular")
 
         # copy over master database and run tabular import
-        PrintMsg("\tCopying selected master template database to tabular folder...", 0)
+        AddMsgAndPrint("\tCopying selected master template database to tabular folder...", 0)
 
         # copy user specified database to the new folder
         shutil.copy2(importDB, newDB)
 
         # Run Auto_Import routine which will import the tabular data from text files
-        PrintMsg("\tImporting textfiles into new database " + os.path.basename(newDB) + "...", 0)
+        AddMsgAndPrint("\tImporting textfiles into new database " + os.path.basename(newDB) + "...", 0)
 
         # Using Adolfo's csv reader method to import tabular data from text files...
         tabularFolder = os.path.join(newFolder, "tabular")
 
         # if the tabular directory is empty return False
         if len(os.listdir(tabularFolder)) < 1:
-            raise MyError, "No text files found in the tabular folder"
+            AddMsgAndPrint("No text files found in the tabular folder",2)
+            return False
 
         if not SSURGOVersion(newDB, tabularFolder):
-            raise MyError, ""
+            return False
 
         # Create a dictionary with table information
         tblInfo = GetTableInfo(newDB)
 
         if len(tblInfo) == 0:
-            raise MyError, "Failed to get information from mdstattabs table"
+            AddMsgAndPrint("Failed to get information from mdstattabs table",2)
+            return False
 
         # Create a list of textfiles to be imported. The import process MUST follow the
         # order in this list in order to maintain referential integrity. This list
@@ -975,7 +947,8 @@ def ImportTabular(areaSym, newFolder, importDB, newDB, bRemoveTXT):
                 tbl, aliasName = tblInfo[txtFile]
 
             else:
-                raise MyError, "Textfile reference '" + txtFile + "' not found in 'mdstattabs table'"
+                AddMsgAndPrint("Textfile reference '" + txtFile + "' not found in 'mdstattabs table'",2)
+                return False
 
             arcpy.SetProgressorLabel("Importing " + tbl + "...")
 
@@ -1026,10 +999,12 @@ def ImportTabular(areaSym, newFolder, importDB, newDB, bRemoveTXT):
 
                     except:
                         errorMsg()
-                        raise MyError, "Error loading line no. " + Number_Format(iRows, 0, True) + " of " + txtFile + ".txt"
+                        AddMsgAndPrint("Error loading line no. " + Number_Format(iRows, 0, True) + " of " + txtFile + ".txt",2)
+                        return False
 
             else:
-                raise MyError, "Required table '" + tbl + "' not found in " + newDB
+                AddMsgAndPrint("Required table '" + tbl + "' not found in " + newDB,2)
+                return False
 
             arcpy.SetProgressorPosition()
 
@@ -1057,7 +1032,8 @@ def ImportTabular(areaSym, newFolder, importDB, newDB, bRemoveTXT):
 
             except:
                 errorMsg()
-                raise MyError, "Error loading line no. " + Number_Format(iRows, 0, True) + " of " + txtFile + ".txt"
+                AddMsgAndPrint("Error loading line no. " + Number_Format(iRows, 0, True) + " of " + txtFile + ".txt",2)
+                return False
 
         arcpy.SetProgressorPosition()  # for featdesc table
 
@@ -1066,7 +1042,7 @@ def ImportTabular(areaSym, newFolder, importDB, newDB, bRemoveTXT):
         bSorted = SortMapunits(newDB)
 
         if bSorted == False:
-            raise MyError, ""
+            return False
 
         arcpy.SetProgressorPosition()  # for map unit sort
 
@@ -1077,7 +1053,8 @@ def ImportTabular(areaSym, newFolder, importDB, newDB, bRemoveTXT):
 
         if dbDate == 0:
             # With this error, it would be best to bailout and fix the problem before proceeding
-            raise MyError, "Failed to import tabular data"
+            AddMsgAndPrint("Failed to import tabular data",2)
+            return False
 
         else:
             # Compact database (~30% reduction in mdb filesize)
@@ -1086,12 +1063,12 @@ def ImportTabular(areaSym, newFolder, importDB, newDB, bRemoveTXT):
                 sleep(2)
                 arcpy.Compact_management(newDB)
                 sleep(1)
-                PrintMsg("\tCompacted database", 0)
+                AddMsgAndPrint("\tCompacted database", 0)
 
             except:
                 # Sometimes ArcGIS is unable to compact (locked database?)
                 # Usually restarting the ArcGIS application fixes this problem
-                PrintMsg("\tUnable to compact database", 1)
+                AddMsgAndPrint("\tUnable to compact database", 1)
 
             # Set the Progressor to show completed status
             arcpy.ResetProgressor()
@@ -1104,18 +1081,13 @@ def ImportTabular(areaSym, newFolder, importDB, newDB, bRemoveTXT):
             # Remove all the text files from the tabular folder
             if bRemoveTXT:
                 txtList = glob.glob(os.path.join(tabularFolder, "*.txt"))
-                PrintMsg("\tRemoving textfiles...", 0)
+                AddMsgAndPrint("\tRemoving textfiles...", 0)
 
                 for txtFile in txtList:
                     if not txtFile.endswith("version.txt"):
                         os.remove(txtFile)
 
         return True
-
-    except MyError, e:
-        # Example: raise MyError, "This is an error message"
-        PrintMsg(str(e), 2)
-        return False
 
     except:
         errorMsg()
@@ -1140,7 +1112,8 @@ def AddMuName(newFolder):
         env.workspace = spatialFolder
 
         if not arcpy.Exists(muTxt):
-            raise MyError, "Cannot find " + muTxt
+            AddMsgAndPrint("Cannot find " + muTxt,2)
+            return False
 
         # Some of the tabular only shapefiles on WSS were created as polyline instead of
         # polygon. This situation will cause the next line to fail with index out of range
@@ -1155,7 +1128,7 @@ def AddMuName(newFolder):
                 muShp = shpList[0]
 
                 if bMuName:
-                    PrintMsg("\tAdding MUNAME, FARMLNDCL attributes to " + muShp, 0)
+                    AddMsgAndPrint("\tAdding MUNAME, FARMLNDCL attributes to " + muShp, 0)
                     # add muname column to shapefile
 
                     try:
@@ -1164,7 +1137,8 @@ def AddMuName(newFolder):
                         arcpy.AddField_management (muShp, "FARMLNDCL", "TEXT", "", "", 175)
 
                     except:
-                        raise MyError, "Failed to add additional fields to shapefile"
+                        AddMsgAndPrint("Failed to add additional fields to shapefile",2)
+                        return False
 
                     # read mukey and muname into dictionary from mapunit.txt file
                     with open(muTxt, 'r') as f:
@@ -1174,7 +1148,7 @@ def AddMuName(newFolder):
                         s = rec.replace('"','')
                         muList = s.split("|")
                         muDict[muList[len(muList) - 1].strip()] = (muList[1], muList[11])
-                        #PrintMsg("\t" + muList[len(muList) - 1].strip() + ": " + str(muList[1]), 1)
+                        #AddMsgAndPrint("\t" + muList[len(muList) - 1].strip() + ": " + str(muList[1]), 1)
 
                     # update shapefile muname column using dictionary
                     with arcpy.da.UpdateCursor(muShp, ("MUKEY","MUNAME","FARMLNDCL")) as upCursor:
@@ -1193,7 +1167,7 @@ def AddMuName(newFolder):
 
                 if len(shpList) == 1:
                     muShp = shpList[0]
-                    PrintMsg("\tImporting metadata for " + muShp, 0)
+                    AddMsgAndPrint("\tImporting metadata for " + muShp, 0)
                     arcpy.SetProgressorLabel("Importing metadata...")
                     metaData = os.path.join(newFolder, "soil_metadata_" + areaSym.lower() + ".xml")
                     arcpy.ImportMetadata_conversion(metaData, "FROM_FGDC", os.path.join(spatialFolder, muShp), "ENABLED")
@@ -1207,18 +1181,13 @@ def AddMuName(newFolder):
                         arcpy.Delete_management(logFile, "File")
 
             except:
-                PrintMsg("\tFailed to add MUNAME column to shapefile", 1)
+                AddMsgAndPrint("\tFailed to add MUNAME column to shapefile", 1)
 
             return True
 
         else:
-            PrintMsg("\tMap unit polygon shapefile not found, 'Tabular-Only' survey?", 2)
+            AddMsgAndPrint("\tMap unit polygon shapefile not found, 'Tabular-Only' survey?", 2)
             return False
-
-    except MyError, e:
-        # Example: raise MyError, "This is an error message"
-        PrintMsg(str(e), 2)
-        return False
 
     except:
         #errorMsg()
@@ -1248,7 +1217,7 @@ try:
 
     # Set tabular import to False if no Template database is specified
     if importDB == "":
-        PrintMsg(" \nWarning! Tabular import turned off (no database specified)", 1)
+        AddMsgAndPrint(" \nWarning! Tabular import turned off (no database specified)", 1)
         bImport = False
 
     else:
@@ -1261,7 +1230,7 @@ try:
     goodList = list()    # list of successful surveys
     iGet = 0
 
-    PrintMsg(" \n" + str(len(surveyList)) + " soil survey(s) selected for Web Soil Survey download", 0)
+    AddMsgAndPrint(" \n" + str(len(surveyList)) + " soil survey(s) selected for Web Soil Survey download", 0)
 
     # set workspace to output folder
     env.workspace = outputFolder
@@ -1297,7 +1266,6 @@ try:
         if bProcessed == "Failed":
             failedList.append(areaSym)
             failedCnt += 1
-            #raise MyError, ""
 
         elif bProcessed == "Skipped":
             skippedList.append(areaSym)
@@ -1316,30 +1284,29 @@ try:
         arcpy.SetProgressorPosition()
 
     if len(failedList) > 0 or len(skippedList) > 0:
-        PrintMsg(" \nDownload process completed (" + Number_Format(len(goodList), 0, True) + " succeeded) with the following issues...", 1)
+        AddMsgAndPrint(" \nDownload process completed (" + Number_Format(len(goodList), 0, True) + " succeeded) with the following issues...", 1)
 
     else:
         if importDB:
-            PrintMsg(" \nAll " + Number_Format(len(asList), 0, True) + " surveys succcessfully downloaded, tabular import process complete", 0)
+            AddMsgAndPrint(" \nAll " + Number_Format(len(asList), 0, True) + " surveys succcessfully downloaded, tabular import process complete", 0)
 
         else:
-            PrintMsg(" \nAll " + Number_Format(len(asList), 0, True) + " surveys succcessfully downloaded (no tabular import)", 0)
+            AddMsgAndPrint(" \nAll " + Number_Format(len(asList), 0, True) + " surveys succcessfully downloaded (no tabular import)", 0)
 
     arcpy.SetProgressorLabel("Processing complete...")
     env.workspace = outputFolder
 
 except MyError, e:
-    # Example: raise MyError, "This is an error message"
-    PrintMsg(str(e), 2)
+    AddMsgAndPrint(str(e),2)
 
 except:
     errorMsg()
 
 finally:
     if len(failedList) > 0:
-        PrintMsg(" \n\tWSS download failed for: " + ", ".join(failedList), 2)
+        AddMsgAndPrint(" \n\tWSS download failed for: " + ", ".join(failedList), 2)
 
     if len(skippedList) > 0:
-        PrintMsg(" \n\tSkipped because a current version already exists: " + ", ".join(skippedList), 1)
+        AddMsgAndPrint(" \n\tSkipped because a current version already exists: " + ", ".join(skippedList), 1)
 
-    PrintMsg(" ", 0)
+    AddMsgAndPrint(" ", 0)

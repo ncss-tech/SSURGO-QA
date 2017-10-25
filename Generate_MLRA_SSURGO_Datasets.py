@@ -1318,7 +1318,7 @@ if __name__ == '__main__':
                 #arcpy.Append_management(soilShpList, os.path.join(FGDBpath, soilFC), "NO_TEST")
 
                 AddMsgAndPrint("\t\tSuccessfully merged SSURGO Soil Mapunit Polygons",0)
-                if not addAttributeIndex(soilFCpath,["AREASYMBOL","MUSYM"]): pass
+                if not addAttributeIndex(soilFCpath,["AREASYMBOL","MUSYM"],False): pass
 
                 arcpy.SetProgressorPosition()
 
@@ -1335,7 +1335,7 @@ if __name__ == '__main__':
                 #arcpy.Append_management(muLineShpList, os.path.join(FGDBpath, muLineFC), "NO_TEST")
 
                 AddMsgAndPrint("\t\tSuccessfully merged SSURGO Soil Mapunit Lines",0)
-                if not addAttributeIndex(muLineFCpath,["AREASYMBOL","MUSYM"]): pass
+                if not addAttributeIndex(muLineFCpath,["AREASYMBOL","MUSYM"],False): pass
 
             else:
                 AddMsgAndPrint("\t\tNo SSURGO Soil Mapunit Lines to merge",0)
@@ -1352,7 +1352,7 @@ if __name__ == '__main__':
                 #arcpy.Append_management(muPointShpList, os.path.join(FGDBpath, muPointFC), "NO_TEST", muPointFM)
 
                 AddMsgAndPrint("\t\tSuccessfully merged SSURGO Soil Mapunit Points",0)
-                if not addAttributeIndex(muPointFCpath,["AREASYMBOL","MUSYM"]): pass
+                if not addAttributeIndex(muPointFCpath,["AREASYMBOL","MUSYM"],False): pass
 
             else:
                 AddMsgAndPrint("\t\tNo SSURGO Soil Mapunit Points to merge",0)
@@ -1367,7 +1367,7 @@ if __name__ == '__main__':
             #arcpy.Append_management(soilSaShpList, os.path.join(FGDBpath, soilSaFC), "NO_TEST")
 
             AddMsgAndPrint("\t\tSuccessfully merged SSURGO Soil Survey Area Polygons",0)
-            if not addAttributeIndex(soilSaFCpath,["AREASYMBOL"]): pass
+            if not addAttributeIndex(soilSaFCpath,["AREASYMBOL"],False): pass
 
             arcpy.SetProgressorPosition()
 
@@ -1382,8 +1382,7 @@ if __name__ == '__main__':
                 #arcpy.Append_management(featPointShpList, os.path.join(FGDBpath, featPointFC), "NO_TEST")
 
                 AddMsgAndPrint("\t\tSuccessfully merged SSURGO Special Point Features",0)
-                if not addAttributeIndex(featPointFCpath,["AREASYMBOL", "FEATSYM"]): pass
-
+                if not addAttributeIndex(featPointFCpath,["AREASYMBOL", "FEATSYM"],False): pass
 
             else:
                 AddMsgAndPrint("\t\tNo SSURGO Soil Special Point Features to merge",0)
@@ -1400,7 +1399,7 @@ if __name__ == '__main__':
                 #arcpy.Append_management(featLineShpList, os.path.join(FGDBpath, featLineFC), "NO_TEST")
 
                 AddMsgAndPrint("\t\tSuccessfully merged SSURGO Special Line Features \n",0)
-                if not addAttributeIndex(featLineFCpath,["AREASYMBOL", "FEATSYM"]): pass
+                if not addAttributeIndex(featLineFCpath,["AREASYMBOL", "FEATSYM"],False): pass
 
             else:
                 AddMsgAndPrint("\t\tNo SSURGO Special Line Features to merge \n",0)

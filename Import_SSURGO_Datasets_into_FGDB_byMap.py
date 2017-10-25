@@ -598,8 +598,8 @@ def CreateTableRelationships(tblAliases):
     #Modified From Steve Peaslee's Setup_UpdateSurvey
     env.workspace = ssurgoTemplate
 
-    AddMsgAndPrint("\n******************************************************************************************************************",1)
-    AddMsgAndPrint("Verifying relationships:",1)
+    AddMsgAndPrint("\n-------------------------------------------------------------------------------------------------------",1)
+    AddMsgAndPrint("Verifying relationships:\n",1)
 
     # set progressor object which allows progress information to be passed for every relationship complete
 
@@ -1348,7 +1348,7 @@ if __name__ == '__main__':
         if not addAttributeIndex(os.path.join(FGDBpath,"muaggatt"),["musym","muname","mustatus","flodfreqdcd","drclassdcd","hydgrpdcd","hydclprs"],False):pass
 
         # ------------------------------------------------------------------------------ Summarize output dataset
-        AddMsgAndPrint("\n******************************************************************************************************************",1)
+        AddMsgAndPrint("\n-------------------------------------------------------------------------------------------------------",1)
         AddMsgAndPrint("Total # of SSURGO Datasets Appended: " + str(splitThousands(len(soilShpList))),1)
         AddMsgAndPrint("\tTotal # of Mapunit Polygons: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + soilFC).getOutput(0))),1)
         AddMsgAndPrint("\tTotal # of Mapunit Lines: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + muLineFC).getOutput(0))),1)

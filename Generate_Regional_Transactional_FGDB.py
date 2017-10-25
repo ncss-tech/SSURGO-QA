@@ -208,8 +208,6 @@ def createFGDB(regionChoice,outputFolder):
     # within FD_RTSD along with a topology.  1 feature class will be created within the ProjectRecord
     # FD.  Return new name of RTSD otherwise return empty string.
 
-    import datetime
-
     try:
         targetGDB = os.path.join(outputFolder,"TempRTSD.gdb")
 
@@ -219,10 +217,11 @@ def createFGDB(regionChoice,outputFolder):
         arcpy.CreateFileGDB_management(outputFolder,"TempRTSD")
 
         # New fiscal year if month October, November and December
-        if datetime.datetime.now().strftime("%m") > 9 and datetime.datetime.now().strftime("%m") < 13:
-            FY = "FY" + str(datetime.datetime.now().strftime("%y") +1)
+        month = int(datetime.now().strftime("%m"))
+        if month > 9 and month < 13:
+            FY = "FY" + str(int(datetime.now().strftime("%y")) +1)
         else:
-            FY = "FY" + str(datetime.datetime.now().strftime("%y"))
+            FY = "FY" + str(datetime.now().strftime("%y"))
 
         # Alask = NAD_1983_Alaska_Albers
         if regionChoice == "Region 1 - AK":
@@ -439,9 +438,8 @@ def createTopology(RTSD_FD):
 
     try:
 
-        AddMsgAndPrint("\n" + "Creating Topology and Rules",0)
         #env.workspace = RTSD_FD
-
+        AddMsgAndPrint("\nCreating Topology and Rules",0)
         arcpy.SetProgressor("step", "Creating Topology", 0, 3, 1)
 
         # Create New topology
@@ -473,7 +471,7 @@ def createTopology(RTSD_FD):
         arcpy.AddRuleToTopology_management(newTopology, "Must Be Single Part (Line)", "FEATLINE")
         arcpy.AddRuleToTopology_management(newTopology, "Must Be Disjoint (Point)", "FEATPOINT")
         arcpy.AddRuleToTopology_management(newTopology, "Must Be Disjoint (Point)", "MUPOINT")
-        arcpy.AddRuleToTopology_management(newTopology, "Must Be Properly Inside (Point-Area)","FEATPOINT","MUPOLYGON")
+        #arcpy.AddRuleToTopology_management(newTopology, "Must Be Properly Inside (Point-Area)","FEATPOINT","MUPOLYGON")
         arcpy.AddRuleToTopology_management(newTopology, "Must Not Overlap (Line)", "MULINE")
         arcpy.AddRuleToTopology_management(newTopology, "Must Not Intersect (Line)", "MULINE")
         arcpy.AddRuleToTopology_management(newTopology, "Must Not Self-Overlap (Line)", "MULINE")
@@ -769,6 +767,7 @@ if __name__ == '__main__':
 
         # Get a list of Regional areasymbols to download from the Regional Master Table.  [u'WI001, u'WI003']
         regionalASlist = getRegionalAreaSymbolList(regionalTable,regionChoice)
+        regionalASlist = ['WI021','WI025','WI027']
 
         # Exit if list of regional areasymbol list is empty
         if not len(regionalASlist) > 0:
@@ -958,7 +957,7 @@ if __name__ == '__main__':
             #arcpy.Append_management(soilShpList, os.path.join(FDpath, soilFC), "NO_TEST", soilsFM)
 
             AddMsgAndPrint("\tSuccessfully merged SSURGO Soil Mapunit Polygons",0)
-            if not addAttributeIndex(soilFCpath,["AREASYMBOL","MUSYM"]): pass
+            if not addAttributeIndex(soilFCpath,["AREASYMBOL","MUSYM"],False): pass
 
             arcpy.SetProgressorPosition()
 
@@ -980,7 +979,7 @@ if __name__ == '__main__':
             #arcpy.Append_management(muLineShpList, os.path.join(FDpath, muLineFC), "NO_TEST", muLineFM)
 
             AddMsgAndPrint("\tSuccessfully merged SSURGO Soil Mapunit Lines",0)
-            if not addAttributeIndex(muLineFCpath,["AREASYMBOL","MUSYM"]): pass
+            if not addAttributeIndex(muLineFCpath,["AREASYMBOL","MUSYM"],False): pass
 
         else:
             AddMsgAndPrint("\tNo SSURGO Soil Mapunit Lines to merge",0)
@@ -1002,7 +1001,7 @@ if __name__ == '__main__':
             #arcpy.Append_management(muPointShpList, os.path.join(FDpath, muPointFC), "NO_TEST", muPointFM)
 
             AddMsgAndPrint("\tSuccessfully merged SSURGO Soil Mapunit Points",0)
-            if not addAttributeIndex(muPointFCpath,["AREASYMBOL","MUSYM"]): pass
+            if not addAttributeIndex(muPointFCpath,["AREASYMBOL","MUSYM"],False): pass
 
         else:
             AddMsgAndPrint("\tNo SSURGO Soil Mapunit Points to merge",0)
@@ -1022,7 +1021,7 @@ if __name__ == '__main__':
         #arcpy.Append_management(soilSaShpList, os.path.join(FDpath, soilSaFC), "NO_TEST", soilSaFM)
 
         AddMsgAndPrint("\tSuccessfully merged SSURGO Soil Survey Area Polygons",0)
-        if not addAttributeIndex(soilSaFCpath,["AREASYMBOL"]): pass
+        if not addAttributeIndex(soilSaFCpath,["AREASYMBOL"],False): pass
 
         arcpy.SetProgressorPosition()
 
@@ -1041,7 +1040,7 @@ if __name__ == '__main__':
             #arcpy.Append_management(featPointShpList, os.path.join(FDpath, featPointFC), "NO_TEST", featPointFM)
 
             AddMsgAndPrint("\tSuccessfully merged SSURGO Special Point Features",0)
-            if not addAttributeIndex(featPointFCpath,["AREASYMBOL", "FEATSYM"]): pass
+            if not addAttributeIndex(featPointFCpath,["AREASYMBOL", "FEATSYM"],False): pass
 
         else:
             AddMsgAndPrint("\tNo SSURGO Soil Special Point Features to merge",0)
@@ -1063,7 +1062,7 @@ if __name__ == '__main__':
             #arcpy.Append_management(featLineShpList, os.path.join(FDpath, featLineFC), "NO_TEST", featLineFM)
 
             AddMsgAndPrint("\tSuccessfully merged SSURGO Special Line Features",0)
-            if not addAttributeIndex(featLineFCpath,["AREASYMBOL", "FEATSYM"]): pass
+            if not addAttributeIndex(featLineFCpath,["AREASYMBOL", "FEATSYM"],False): pass
 
         else:
             AddMsgAndPrint("\tNo SSURGO Special Line Features to merge",0)

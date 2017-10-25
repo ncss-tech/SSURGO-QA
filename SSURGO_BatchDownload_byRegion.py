@@ -19,32 +19,31 @@
 # Steve Peaslee and Adolfo Diaz
 #
 # Updated: 2016-12-16 Converted the SOAP request to POST-REST request to SDaccess. -- AD
-## ===================================================================================
-class MyError(Exception):
-    pass
 
 ## ===================================================================================
-def errorMsg():
-    try:
-        tb = sys.exc_info()[2]
-        tbinfo = traceback.format_tb(tb)[0]
-        theMsg = tbinfo + "\n" + str(sys.exc_type)+ ": " + str(sys.exc_value) + "\n"
-        PrintMsg(theMsg, 2)
+def print_exception():
 
-    except:
-        PrintMsg("Unhandled error in errorMsg method", 2)
-        pass
+    tb = sys.exc_info()[2]
+    l = traceback.format_tb(tb)
+    l.reverse()
+    tbinfo = "".join(l)
+    AddMsgAndPrint("\n\n----------ERROR Start-------------------",2)
+    AddMsgAndPrint("Traceback Info: \n" + tbinfo + "Error Info: \n    " +  str(sys.exc_type)+ ": " + str(sys.exc_value) + "",2)
+    AddMsgAndPrint("----------ERROR End-------------------- \n",2)
 
-## ===================================================================================
-def PrintMsg(msg, severity=0):
+## ================================================================================================================
+def AddMsgAndPrint(msg, severity=0):
+    # prints message to screen if run as a python script
     # Adds tool message to the geoprocessor
-    #Split the message on \n first, so that if it's multiple lines, a GPMessage will be added for each line
-
-    print msg
+    #
+    # Split the message on \n first, so that if it's multiple lines, a GPMessage will be added for each line
 
     try:
+
+        #print msg
         #for string in msg.split('\n'):
-            #Add a geoprocessing message (in case this is run as a tool)
+
+        # Add a geoprocessing message (in case this is run as a tool)
         if severity == 0:
             arcpy.AddMessage(msg)
 
@@ -52,11 +51,11 @@ def PrintMsg(msg, severity=0):
             arcpy.AddWarning(msg)
 
         elif severity == 2:
+            arcpy.AddMessage("    ")
             arcpy.AddError(msg)
 
     except:
         pass
-
 ## ===================================================================================
 def Number_Format(num, places=0, bCommas=True):
 # Format a number according to locality and given places
@@ -182,22 +181,22 @@ def getSDMaccessDict(areaSymbol):
 ##            conn.close()
 ##
 ##        except HTTPError, e:
-##            PrintMsg("\t" + areaSymbol + " encountered HTTP Error querying SDMaccess (" + str(e.code) + ")", 2)
+##            AddMsgAndPrint("\t" + areaSymbol + " encountered HTTP Error querying SDMaccess (" + str(e.code) + ")", 2)
 ##            sleep(i * 3)
 ##            return ""
 ##
 ##        except URLError, e:
-##            PrintMsg("\t" + areaSymbol + " encountered URL Error querying SDMaccess: " + str(e.reason), 2)
+##            AddMsgAndPrint("\t" + areaSymbol + " encountered URL Error querying SDMaccess: " + str(e.reason), 2)
 ##            sleep(i * 3)
 ##            return ""
 ##
 ##        except socket.timeout, e:
-##            PrintMsg("\t" + areaSymbol + " encountered server timeout error querying SDMacess", 2)
+##            AddMsgAndPrint("\t" + areaSymbol + " encountered server timeout error querying SDMacess", 2)
 ##            sleep(i * 3)
 ##            return ""
 ##
 ##        except socket.error, e:
-##            PrintMsg("\t" + areaSymbol + " encountered SDMaccess connection failure", 2)
+##            AddMsgAndPrint("\t" + areaSymbol + " encountered SDMaccess connection failure", 2)
 ##            sleep(i * 3)
 ##            return ""
 ##
@@ -228,7 +227,7 @@ def getSDMaccessDict(areaSymbol):
 
     except urllib2.HTTPError:
         errorMsg()
-        PrintMsg(" \n" + sQuery, 1)
+        AddMsgAndPrint(" \n" + sQuery, 1)
         return ""
 
     except:
@@ -264,7 +263,7 @@ def GetDownload(areasym, surveyDate):
         zipURL1 = baseURL + zipName1  # https://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/wss_SSA_WI025_soildb_US_2003_[2012-06-26].zip
         zipURL2 = baseURL + zipName2  # https://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/wss_SSA_WI025_soildb_WI_2003_[2012-06-26].zip
 
-        PrintMsg("\tGetting zipfile from Web Soil Survey...", 0)
+        AddMsgAndPrint("\tGetting zipfile from Web Soil Survey...", 0)
 
         # number of attempts allowed
         attempts = 5
@@ -301,25 +300,25 @@ def GetDownload(areasym, surveyDate):
                 return zipName
 
             except HTTPError, e:
-                PrintMsg("\t" + areaSym + " encountered HTTP Error (" + str(e.code) + ")", 2)
+                AddMsgAndPrint("\t" + areaSym + " encountered HTTP Error (" + str(e.code) + ")", 2)
                 sleep(i * 3)
 
             except URLError, e:
-                PrintMsg("\t" + areaSym + " encountered URL Error: " + str(e.reason), 2)
+                AddMsgAndPrint("\t" + areaSym + " encountered URL Error: " + str(e.reason), 2)
                 sleep(i * 3)
 
             except socket.timeout, e:
-                PrintMsg("\t" + areaSym + " encountered server timeout error", 2)
+                AddMsgAndPrint("\t" + areaSym + " encountered server timeout error", 2)
                 sleep(i * 3)
 
             except socket.error, e:
-                PrintMsg("\t" + areasym + " encountered Web Soil Survey connection failure", 2)
+                AddMsgAndPrint("\t" + areasym + " encountered Web Soil Survey connection failure", 2)
                 sleep(i * 3)
 
             except:
                 # problem deleting partial zip file after connection error?
                 # saw some locked, zero-byte zip files associated with connection errors
-                PrintMsg("\tFailed to download zipfile", 0)
+                AddMsgAndPrint("\tFailed to download zipfile", 0)
                 sleep(1)
                 return ""
 
@@ -356,17 +355,19 @@ try:
 
     # Bail if reginal master table is not found
     if not arcpy.Exists(regionalTable) or not arcpy.Exists(masterTable):
-        raise MyError, "\nRegion Buffer Table or Master Table is missing from " + os.path.dirname(sys.argv[0])
+        AddMsgAndPrint("\nRegion Buffer Table or Master Table is missing from " + os.path.dirname(sys.argv[0]),2)
+        exit()
 
     # Get a list of areasymbols to download from the Regional Master Table. [u'WI001, u'WI003']
     asList,numOfRegionalSSA = getRegionalAreaSymbolList(regionalTable,masterTable,regionChoice)
 
     if not len(asList) > 0:
-        raise MyError, "\nNo Areasymbols were selected. Possible problem with table"
+        AddMsgAndPrint("\nNo Areasymbols were selected. Possible problem with table",2)
+        exit()
 
-    PrintMsg("\n\n" + str(len(asList)) + " SSURGO Dataset(s) will be downloaded for " + regionChoice, 1)
-    PrintMsg("\tNumber of Soil Survey Areas assigned to " + regionChoice + ": " + str(numOfRegionalSSA),1)
-    PrintMsg("\tNumber of Additional SSAs to be downloaded for the use of static datasets: " + str(len(asList) - numOfRegionalSSA),1)
+    AddMsgAndPrint("\n\n" + str(len(asList)) + " SSURGO Dataset(s) will be downloaded for " + regionChoice, 1)
+    AddMsgAndPrint("\tNumber of Soil Survey Areas assigned to " + regionChoice + ": " + str(numOfRegionalSSA),1)
+    AddMsgAndPrint("\tNumber of Additional SSAs to be downloaded for the use of static datasets: " + str(len(asList) - numOfRegionalSSA),1)
 
     failedList = list()  # track list of failed downloads
 
@@ -379,7 +380,7 @@ try:
 
     for SSA in asList:
 
-        PrintMsg("\nAttempting connection and download for: " + SSA,1)
+        AddMsgAndPrint("\nAttempting connection and download for: " + SSA,1)
 
         iGet += 1
 
@@ -392,7 +393,7 @@ try:
 
         # Could not get SDaccess info for this SSA - cannot continue
         if len(asDict) < 1:
-            PrintMsg("\tCould not get information for " + SSA + " from SD Access",2)
+            AddMsgAndPrint("\tCould not get information for " + SSA + " from SD Access",2)
             failedList.append(SSA)
             continue
 
@@ -408,12 +409,12 @@ try:
         newFolder = os.path.join(outputFolder, "soil_" + areaSym.lower())
 
         if os.path.exists(newFolder):
-            #PrintMsg("\nOutput dataset for " + areaSym + " already exists and will be overwritten", 0)
+            #AddMsgAndPrint("\nOutput dataset for " + areaSym + " already exists and will be overwritten", 0)
             #arcpy.Delete_management(newFolder, "Folder")
-            PrintMsg("\tOutput dataset for " + areaSym + " already exists.  Moving to the next one", 0)
+            AddMsgAndPrint("\tOutput dataset for " + areaSym + " already exists.  Moving to the next one", 0)
             continue
 
-        PrintMsg("\tDownloading survey " + areaSym + ": " + surveyName + " - Version: " + str(surveyDate), 0)
+        AddMsgAndPrint("\tDownloading survey " + areaSym + ": " + surveyName + " - Version: " + str(surveyDate), 0)
         arcpy.SetProgressorLabel("Downloading survey " + areaSym.upper() + "  (" + Number_Format(iGet, 0, True) + " of " + Number_Format(len(asList), 0, True) + ")")
 
         # Allow for multiple attempts to get zip file
@@ -439,11 +440,11 @@ try:
 
                         # Less than 1 would be Kilabytes; show 2 decimal places
                         if zipSize < 1:
-                            PrintMsg("\t\tUnzipping " + Number_Format(zipSize, 2, True) + " KB file to " + outputFolder, 0)
+                            AddMsgAndPrint("\t\tUnzipping " + Number_Format(zipSize, 2, True) + " KB file to " + outputFolder, 0)
 
                         # Greater than 1 would be Megabytes; show 1 decimal place
                         else:
-                            PrintMsg("\t\tUnzipping " + Number_Format(zipSize, 1, True) + " MB file to " + outputFolder, 0)
+                            AddMsgAndPrint("\t\tUnzipping " + Number_Format(zipSize, 1, True) + " MB file to " + outputFolder, 0)
 
                         # Extract all members from the archive to the current working directory
                         with zipfile.ZipFile(local_zip, "r") as z:
@@ -466,7 +467,8 @@ try:
 
                         else:
                             # none of the subfolders within the zip file match any of the expected names
-                            raise MyError, "Subfolder within the zip file does not match any of the expected names"
+                            AddMsgAndPrint("Subfolder within the zip file does not match any of the expected names",2)
+                            exit()
 
                         # import FGDC metadata to mapunit polygon shapefile
                         spatialFolder = os.path.join(newFolder, "spatial")
@@ -476,13 +478,13 @@ try:
                         try:
                             if len(shpList) == 1:
                                 muShp = shpList[0]
-                                PrintMsg("\t\tImporting metadata for " + muShp, 0)
+                                AddMsgAndPrint("\t\tImporting metadata for " + muShp, 0)
                                 metaData = os.path.join(newFolder, "soil_metadata_" + areaSym.lower() + ".xml")
                                 arcpy.ImportMetadata_conversion(metaData, "FROM_FGDC", os.path.join(spatialFolder, muShp), "ENABLED")
                                 del spatialFolder, muShp, metaData
 
                         except:
-                            PrintMsg("\t\tImporting metadata for " + muShp + " Failed.  ", 0)
+                            AddMsgAndPrint("\t\tImporting metadata for " + muShp + " Failed.  ", 0)
                             pass
 
                         # end of successful zip file download
@@ -491,14 +493,14 @@ try:
                     # Zip file size is empty.  Attempt again if 2nd attempt has not been executed
                     else:
                         if i == 0:
-                            PrintMsg("\n\tZip file for " + areaSym + " is empty. Reattempting to download, 1")
+                            AddMsgAndPrint("\n\tZip file for " + areaSym + " is empty. Reattempting to download, 1")
                             os.remove(local_zip)
                             continue
 
                 # Zip file is corrupt or missing
                 else:
                     if i == 0:
-                        PrintMsg("\n\tZip file for " + areaSym + " is missing. Reattempting to download, 1")
+                        AddMsgAndPrint("\n\tZip file for " + areaSym + " is missing. Reattempting to download, 1")
                         continue
 
             # download zip file again if this is first error
@@ -510,18 +512,18 @@ try:
 
         # download for this survey failed twice
         if not os.path.exists(newFolder):
-            PrintMsg("\n\tDownload failed for " + areaSym + ": " + surveyName, 2)
+            AddMsgAndPrint("\n\tDownload failed for " + areaSym + ": " + surveyName, 2)
             failedList.append(SSA)
 
         del asDict, survey, surveyInfo, areaSym, surveyDate, surveyName, newFolder, iTry
         arcpy.SetProgressorPosition()
 
     if len(failedList) > 0:
-        PrintMsg("\n" + str(len(asList) - len(failedList)) + " ouf of " + str(len(asList)) + " were successfully downloaded.",2)
-        PrintMsg("\tThese surveys failed to download properly: " + ", ".join(failedList),2)
+        AddMsgAndPrint("\n" + str(len(asList) - len(failedList)) + " ouf of " + str(len(asList)) + " were successfully downloaded.",2)
+        AddMsgAndPrint("\tThese surveys failed to download properly: " + ", ".join(failedList),2)
 
     else:
-        PrintMsg("\nAll SSURGO datasets downloaded successfully\n", 0)
+        AddMsgAndPrint("\nAll SSURGO datasets downloaded successfully\n", 0)
 
     arcpy.SetProgressorLabel("Processing complete...")
     env.workspace = outputFolder

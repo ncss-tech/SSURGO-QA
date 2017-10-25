@@ -413,7 +413,7 @@ def importTabularData(tabularFolder, tblAliases):
         # that make up the tabular data set.
         mdstattabsTable = env.workspace + os.sep + "mdstattabs"
 
-        AddMsgAndPrint("\n\nImporting Tabular Data for: " + SSA,1)
+        AddMsgAndPrint("\nImporting Tabular Data for: " + SSA,1)
 
         # set progressor object which allows progress information to be passed for every merge complete
         arcpy.SetProgressor("step", "Importing Tabular Data for " + SSA, 0, len(GDBTables), 1)
@@ -599,8 +599,8 @@ def CreateTableRelationships(tblAliases):
     #Modified From Steve Peaslee's Setup_UpdateSurvey
     env.workspace = ssurgoTemplate
 
-    AddMsgAndPrint("\n******************************************************************************************************************",1)
-    AddMsgAndPrint("Verifying relationships:",1)
+    AddMsgAndPrint("\n------------------------------------------------------------------------------------------------------- ",1)
+    AddMsgAndPrint("Verifying relationships:\n",1)
 
     # set progressor object which allows progress information to be passed for every relationship complete
 
@@ -847,11 +847,11 @@ def addAttributeIndex(table,fieldList,verbose=True):
     try:
         # Make sure table exists. - Just in case
         if not arcpy.Exists(table):
-            AddMsgAndPrint("Attribute index cannot be created for: " + os.path.basename(table) + " TABLE DOES NOT EXIST",2)
+            AddMsgAndPrint("\nAttribute index cannot be created for: " + os.path.basename(table) + " TABLE DOES NOT EXIST",2)
             return False
 
         else:
-            if verbose: AddMsgAndPrint("Adding Indexes to Table: " + os.path.basename(table))
+            if verbose: AddMsgAndPrint("\nAdding Indexes to Table: " + os.path.basename(table))
 
         # iterate through every field
         for fieldToIndex in fieldList:
@@ -1410,7 +1410,7 @@ if __name__ == '__main__':
 ##            if not addAttributeIndex(tablePath,fieldNames): continue
 
         # ------------------------------------------------------------------------------ Summarize output dataset
-        AddMsgAndPrint("\n******************************************************************************************************************",1)
+        AddMsgAndPrint("\n-------------------------------------------------------------------------------------------------------",1)
         AddMsgAndPrint("Total # of SSURGO Datasets Appended: " + str(splitThousands(len(soilShpList))),1)
         AddMsgAndPrint("\tTotal # of Mapunit Polygons: " + str(splitThousands(arcpy.GetCount_management(FGDBpath + os.sep + soilFC).getOutput(0))),1)
 
