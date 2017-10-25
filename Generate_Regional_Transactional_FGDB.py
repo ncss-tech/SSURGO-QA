@@ -729,7 +729,8 @@ def addAttributeIndex(table,fieldList,verbose=True):
         print_exception()
         return False
 
-## ====================================== Main Body ===========================================================
+
+## =========================================================== Main Body =========================================================================
 # Import modules
 import arcpy, sys, string, os, time, datetime, re, traceback, csv
 from arcpy import env
@@ -902,6 +903,7 @@ if __name__ == '__main__':
             featPointFM.addTable(featPointShpPath)
             featLineFM.addTable(featLineShpPath)
 
+
             del soilShpPath, muLineShpPath, muPointShpPath, soilSaShpPath, featPointShpPath, featLineShpPath, desc, shpExtent, XCntr, YCntr, surveyCenter
 
         # ---------------------------------------------------------------------------------------------------------- Begin the Merge Process
@@ -957,6 +959,7 @@ if __name__ == '__main__':
             #arcpy.Append_management(soilShpList, os.path.join(FDpath, soilFC), "NO_TEST", soilsFM)
 
             AddMsgAndPrint("\tSuccessfully merged SSURGO Soil Mapunit Polygons",0)
+
             if not addAttributeIndex(soilFCpath,["AREASYMBOL","MUSYM"],False): pass
 
             arcpy.SetProgressorPosition()
@@ -1084,7 +1087,7 @@ if __name__ == '__main__':
         else:
             AddMsgAndPrint("\n\tFailed to Create Topology. Create Topology Manually",2)
 
-        # Create Relationship class between project_record and SAPOLYGON feature class
+        # ---------------------------------------------------------------- Create Relationship class between project_record and SAPOLYGON feature class
         arcpy.SetProgressorLabel("Creating Relationship Class between Project_Record & SAPOLYGON")
         prjRecTable = os.path.join(FGDBpath,'ProjectRecord' + os.sep + 'Project_Record')
         saPolyPath = os.path.join(FDpath,soilSaFC)
@@ -1096,11 +1099,15 @@ if __name__ == '__main__':
         arcpy.Compact_management(FGDBpath)
         AddMsgAndPrint("\nSuccessfully Compacted " + os.path.basename(FGDBpath))
 
-        # -----------------------------------------------------------------------------  Add Field Aliases to Spatial Layers -tabular already has aliases embedded.
+        # --------------------------------------------------------------------------------------------------------  Add Field Aliases to Spatial Layers -tabular already has aliases embedded.
         if updateAliasNames(regionChoice, FDpath):
             AddMsgAndPrint("\nSuccessfully Updated Alias Names for Feature Classes within " + os.path.basename(FGDBpath))
         else:
             AddMsgAndPrint("\nUnable to Update Alias Names for Feature Classes within " + os.path.basename(FGDBpath),2)
+
+        # -------------------------------------------------------------------------------------------------------- Enable Tracking
+        for fc in [soilFCpath,muLineFCpath,muPointFCpath,featPointFCpath,featPointFCpath]:
+            arcpy.EnableEditorTracking_management(fc,'Creator','Creation_Date','Editor','Last_Edit_Date','ADD_FIELDS')
 
         # -----------------------------------------------------------------------------------------
         AddMsgAndPrint("\n*****************************************************************************************",1)
