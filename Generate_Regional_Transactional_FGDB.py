@@ -864,6 +864,9 @@ if __name__ == '__main__':
         featPointFM = arcpy.FieldMappings()
         featLineFM = arcpy.FieldMappings()
 
+        # Field map object that will contain the original MUSYM; it will be calculated from musym field
+        origMUSYMfm = arcpy.FieldMap()
+
         # list containing the (Xcenter * Ycenter) for every SSURGO soil layer
         extentList = list()
 
@@ -904,7 +907,17 @@ if __name__ == '__main__':
             featLineFM.addTable(featLineShpPath)
 
 
+            origMUSYMfm.addInputField(soilShpPath,"musym")
             del soilShpPath, muLineShpPath, muPointShpPath, soilSaShpPath, featPointShpPath, featLineShpPath, desc, shpExtent, XCntr, YCntr, surveyCenter
+
+        # Add 'orig_musym' to field map
+        origMusym = origMUSYMfm.outputField
+        origMusym.name = 'orig_musym'
+        origMusym.aliasName = 'Original_MUSYM'
+        origMUSYMfm.outputField = origMusym
+
+        origMUSYMfm.mergeRule = 'First'
+        soilsFM.addFieldMap(origMUSYMfm)
 
         # ---------------------------------------------------------------------------------------------------------- Begin the Merge Process
         # Sort shapefiles by extent so that the drawing order is continous
@@ -951,7 +964,7 @@ if __name__ == '__main__':
 
         try:
             for field in soilsFM.fields:
-                if field.name not in ["AREASYMBOL","MUSYM"]:
+                if field.name not in ['AREASYMBOL','MUSYM','orig_musym']:
                     soilsFM.removeFieldMap(soilsFM.findFieldMapIndex(field.name))
 
             soilFCpath = os.path.join(FDpath, soilFC)
@@ -968,6 +981,7 @@ if __name__ == '__main__':
             print_exception()
 
         # ---------------------------------------------------------------------------------------------- Merge Soil Mapunit Lines
+        muLineFCpath = os.path.join(FDpath, muLineFC)
         if len(muLineShpList) > 0:
 
             arcpy.SetProgressorLabel("Merging " + str(len(muLineShpList)) + " SSURGO Soil Mapunit Line Layers")
@@ -977,7 +991,6 @@ if __name__ == '__main__':
                 if field.name not in ["AREASYMBOL","MUSYM"]:
                     muLineFM.removeFieldMap(muLineFM.findFieldMapIndex(field.name))
 
-            muLineFCpath = os.path.join(FDpath, muLineFC)
             arcpy.Merge_management(muLineShpList, muLineFCpath, muLineFM)
             #arcpy.Append_management(muLineShpList, os.path.join(FDpath, muLineFC), "NO_TEST", muLineFM)
 
@@ -990,6 +1003,7 @@ if __name__ == '__main__':
         arcpy.SetProgressorPosition()
 
         # ----------------------------------------------------------------------------------------------- Merge Soil Mapunit Points
+        muPointFCpath = os.path.join(FDpath, muPointFC)
         if len(muPointShpList) > 0:
 
             arcpy.SetProgressorLabel("Merging " + str(len(muPointShpList)) + "SSURGO Soil Mapunit Point Layers")
@@ -999,7 +1013,6 @@ if __name__ == '__main__':
                 if field.name not in ["AREASYMBOL","MUSYM"]:
                     muPointFM.removeFieldMap(muPointFM.findFieldMapIndex(field.name))
 
-            muPointFCpath = os.path.join(FDpath, muPointFC)
             arcpy.Merge_management(muPointShpList, muPointFCpath, muPointFM)
             #arcpy.Append_management(muPointShpList, os.path.join(FDpath, muPointFC), "NO_TEST", muPointFM)
 
@@ -1029,6 +1042,7 @@ if __name__ == '__main__':
         arcpy.SetProgressorPosition()
 
         # --------------------------------------------------------------------------------------------- Merge Special Point Features
+        featPointFCpath = os.path.join(FDpath, featPointFC)
         if len(featPointShpList) > 0:
 
             arcpy.SetProgressorLabel("Merging " + str(len(featPointShpList)) + " SSURGO Special Point Feature Layers")
@@ -1038,7 +1052,6 @@ if __name__ == '__main__':
                 if field.name not in ["AREASYMBOL", "FEATSYM"]:
                     featPointFM.removeFieldMap(featPointFM.findFieldMapIndex(field.name))
 
-            featPointFCpath = os.path.join(FDpath, featPointFC)
             arcpy.Merge_management(featPointShpList, featPointFCpath, featPointFM)
             #arcpy.Append_management(featPointShpList, os.path.join(FDpath, featPointFC), "NO_TEST", featPointFM)
 
@@ -1051,16 +1064,16 @@ if __name__ == '__main__':
         arcpy.SetProgressorPosition()
 
         # -------------------------------------------------------------------------------------------- Merge Special Line Features
-        arcpy.SetProgressorLabel("Merging " + str(len(featLineShpList)) + " SSURGO Special Line Feature Layers")
-
+        featLineFCpath = os.path.join(FDpath, featLineFC)
         if len(featLineShpList) > 0:
+
+            arcpy.SetProgressorLabel("Merging " + str(len(featLineShpList)) + " SSURGO Special Line Feature Layers")
 
             # Transactional FGDB; remove any field other than AREASYMBOL and FEATSYM
             for field in featLineFM.fields:
                 if field.name not in ["AREASYMBOL", "FEATSYM"]:
                     featLineFM.removeFieldMap(featLineFM.findFieldMapIndex(field.name))
 
-            featLineFCpath = os.path.join(FDpath, featLineFC)
             arcpy.Merge_management(featLineShpList, featLineFCpath, featLineFM)
             #arcpy.Append_management(featLineShpList, os.path.join(FDpath, featLineFC), "NO_TEST", featLineFM)
 
@@ -1106,6 +1119,7 @@ if __name__ == '__main__':
             AddMsgAndPrint("\nUnable to Update Alias Names for Feature Classes within " + os.path.basename(FGDBpath),2)
 
         # -------------------------------------------------------------------------------------------------------- Enable Tracking
+        AddMsgAndPrint("adfad" + muLineFCpath,2)
         for fc in [soilFCpath,muLineFCpath,muPointFCpath,featPointFCpath,featPointFCpath]:
             arcpy.EnableEditorTracking_management(fc,'Creator','Creation_Date','Editor','Last_Edit_Date','ADD_FIELDS')
 
