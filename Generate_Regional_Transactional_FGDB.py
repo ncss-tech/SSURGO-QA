@@ -471,7 +471,7 @@ def createTopology(RTSD_FD):
         arcpy.AddRuleToTopology_management(newTopology, "Must Be Single Part (Line)", "FEATLINE")
         arcpy.AddRuleToTopology_management(newTopology, "Must Be Disjoint (Point)", "FEATPOINT")
         arcpy.AddRuleToTopology_management(newTopology, "Must Be Disjoint (Point)", "MUPOINT")
-        #arcpy.AddRuleToTopology_management(newTopology, "Must Be Properly Inside (Point-Area)","FEATPOINT","MUPOLYGON")
+        arcpy.AddRuleToTopology_management(newTopology, "Must Be Properly Inside (Point-Area)","FEATPOINT","","MUPOLYGON","")
         arcpy.AddRuleToTopology_management(newTopology, "Must Not Overlap (Line)", "MULINE")
         arcpy.AddRuleToTopology_management(newTopology, "Must Not Intersect (Line)", "MULINE")
         arcpy.AddRuleToTopology_management(newTopology, "Must Not Self-Overlap (Line)", "MULINE")
@@ -768,7 +768,7 @@ if __name__ == '__main__':
 
         # Get a list of Regional areasymbols to download from the Regional Master Table.  [u'WI001, u'WI003']
         regionalASlist = getRegionalAreaSymbolList(regionalTable,regionChoice)
-        regionalASlist = ['WI021','WI025','WI027']
+        #regionalASlist = ['WI021','WI025','WI027','WI029']
 
         # Exit if list of regional areasymbol list is empty
         if not len(regionalASlist) > 0:
@@ -1104,7 +1104,7 @@ if __name__ == '__main__':
         arcpy.SetProgressorLabel("Creating Relationship Class between Project_Record & SAPOLYGON")
         prjRecTable = os.path.join(FGDBpath,'ProjectRecord' + os.sep + 'Project_Record')
         saPolyPath = os.path.join(FDpath,soilSaFC)
-        relName = "x" + prjRecTable.capitalize() + "_" + soilSaFC
+        relName = "x" + os.path.basename(prjRecTable).replace("_","") + "_" + soilSaFC
         arcpy.CreateRelationshipClass_management(prjRecTable, saPolyPath, relName, "SIMPLE", "> SAPOLYGON", "< Project_Record", "NONE", "ONE_TO_ONE", "NONE", "AREASYMBOL", "AREASYMBOL", "", "")
         AddMsgAndPrint("\nSuccessfully Created Relationship Class")
 
@@ -1119,7 +1119,6 @@ if __name__ == '__main__':
             AddMsgAndPrint("\nUnable to Update Alias Names for Feature Classes within " + os.path.basename(FGDBpath),2)
 
         # -------------------------------------------------------------------------------------------------------- Enable Tracking
-        AddMsgAndPrint("adfad" + muLineFCpath,2)
         for fc in [soilFCpath,muLineFCpath,muPointFCpath,featPointFCpath,featPointFCpath]:
             arcpy.EnableEditorTracking_management(fc,'Creator','Creation_Date','Editor','Last_Edit_Date','ADD_FIELDS')
 

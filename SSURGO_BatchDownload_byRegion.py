@@ -236,21 +236,20 @@ def getSDMaccessDict(areaSymbol):
 
 ## ===================================================================================
 def GetDownload(areasym, surveyDate):
-    # download survey from Web Soil Survey URL and return name of the zip file
-    # want to set this up so that download will retry several times in case of error
-    # return empty string in case of complete failure. Allow main to skip a failed
-    # survey, but keep a list of failures
-    #
-    # As of Aug 2013, states are using either a state or US 2003 template databases which would
-    # result in two possible zip file names. If that changes in the future, these URL will fail
+    """ download survey from Web Soil Survey URL and return name of the zip file
+    want to set this up so that download will retry several times in case of error
+    return empty string in case of complete failure. Allow main to skip a failed
+    survey, but keep a list of failures
 
-    # UPDATED: 1/9/2014 In this version, only the most current SSURGO dataset is downloaded
-    # with a SSURGO Access Template
-    # example URL without Template:
-    # https://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/wss_SSA_NE001_[2012-08-10].zip
-    #
+    As of Aug 2013, states are using either a state or US 2003 template databases which would
+    result in two possible zip file names. If that changes in the future, these URL will fail
 
-    # create URL string from survey string and WSS 3.0 cache URL
+    UPDATED: 1/9/2014 In this version, only the most current SSURGO dataset is downloaded
+    with a SSURGO Access Template
+    example URL without Template:
+    https://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/wss_SSA_NE001_[2012-08-10].zip"""
+
+    #create URL string from survey string and WSS 3.0 cache URL
     baseURL = "https://websoilsurvey.sc.egov.usda.gov/DSD/Download/Cache/SSA/"
 
     try:
@@ -335,198 +334,200 @@ from urllib2 import urlopen, URLError, HTTPError
 from arcpy import env
 from time import sleep
 
-try:
-    #--------------------------------------------------------------------------------------------Set Parameters
-    arcpy.OverwriteOutput = True
+if __name__ == '__main__':
 
-    # Script arguments...
-    regionChoice = arcpy.GetParameterAsText(0)  # User selects what region to download
-    #regionChoice = "Region 10"
+    try:
+        #--------------------------------------------------------------------------------------------Set Parameters
+        arcpy.OverwriteOutput = True
 
-    outputFolder = arcpy.GetParameterAsText(1) # Folder to write the zip files to
-    #outputFolder = r'K:\SSURGO_FY16\WSS'
+        # Script arguments...
+        regionChoice = arcpy.GetParameterAsText(0)  # User selects what region to download
+        #regionChoice = "Region 10"
 
-    # Path to the regional table that contains SSAs by region with extra extent and master table
-    regionalTable = os.path.dirname(sys.argv[0]) + os.sep + "SSURGO_Soil_Survey_Area.gdb\SSA_by_Region_buffer"
-    masterTable = os.path.dirname(sys.argv[0]) + os.sep + "SSURGO_Soil_Survey_Area.gdb\SSA_Regional_Ownership_MASTER"
+        outputFolder = arcpy.GetParameterAsText(1) # Folder to write the zip files to
+        #outputFolder = r'K:\SSURGO_FY16\WSS'
 
-    # set workspace to output folder
-    env.workspace = outputFolder
+        # Path to the regional table that contains SSAs by region with extra extent and master table
+        regionalTable = os.path.dirname(sys.argv[0]) + os.sep + "SSURGO_Soil_Survey_Area.gdb\SSA_by_Region_buffer"
+        masterTable = os.path.dirname(sys.argv[0]) + os.sep + "SSURGO_Soil_Survey_Area.gdb\SSA_Regional_Ownership_MASTER"
 
-    # Bail if reginal master table is not found
-    if not arcpy.Exists(regionalTable) or not arcpy.Exists(masterTable):
-        AddMsgAndPrint("\nRegion Buffer Table or Master Table is missing from " + os.path.dirname(sys.argv[0]),2)
-        exit()
+        # set workspace to output folder
+        env.workspace = outputFolder
 
-    # Get a list of areasymbols to download from the Regional Master Table. [u'WI001, u'WI003']
-    asList,numOfRegionalSSA = getRegionalAreaSymbolList(regionalTable,masterTable,regionChoice)
+        # Bail if reginal master table is not found
+        if not arcpy.Exists(regionalTable) or not arcpy.Exists(masterTable):
+            AddMsgAndPrint("\nRegion Buffer Table or Master Table is missing from " + os.path.dirname(sys.argv[0]),2)
+            exit()
 
-    if not len(asList) > 0:
-        AddMsgAndPrint("\nNo Areasymbols were selected. Possible problem with table",2)
-        exit()
+        # Get a list of areasymbols to download from the Regional Master Table. [u'WI001, u'WI003']
+        asList,numOfRegionalSSA = getRegionalAreaSymbolList(regionalTable,masterTable,regionChoice)
 
-    AddMsgAndPrint("\n\n" + str(len(asList)) + " SSURGO Dataset(s) will be downloaded for " + regionChoice, 1)
-    AddMsgAndPrint("\tNumber of Soil Survey Areas assigned to " + regionChoice + ": " + str(numOfRegionalSSA),1)
-    AddMsgAndPrint("\tNumber of Additional SSAs to be downloaded for the use of static datasets: " + str(len(asList) - numOfRegionalSSA),1)
+        if not len(asList) > 0:
+            AddMsgAndPrint("\nNo Areasymbols were selected. Possible problem with table",2)
+            exit()
 
-    failedList = list()  # track list of failed downloads
+        AddMsgAndPrint("\n\n" + str(len(asList)) + " SSURGO Dataset(s) will be downloaded for " + regionChoice, 1)
+        AddMsgAndPrint("\tNumber of Soil Survey Areas assigned to " + regionChoice + ": " + str(numOfRegionalSSA),1)
+        AddMsgAndPrint("\tNumber of Additional SSAs to be downloaded for the use of static datasets: " + str(len(asList) - numOfRegionalSSA),1)
 
-    # Progress Counter
-    iGet = 0
+        failedList = list()  # track list of failed downloads
 
-    arcpy.SetProgressor("step", "Downloading current SSURGO data from Web Soil Survey.....",  0, len(asList), 1)
+        # Progress Counter
+        iGet = 0
 
-    asList.sort()
+        arcpy.SetProgressor("step", "Downloading current SSURGO data from Web Soil Survey.....",  0, len(asList), 1)
 
-    for SSA in asList:
+        asList.sort()
 
-        AddMsgAndPrint("\nAttempting connection and download for: " + SSA,1)
+        for SSA in asList:
 
-        iGet += 1
+            AddMsgAndPrint("\nAttempting connection and download for: " + SSA,1)
 
-        # Query SDMaccess Areaname and Spatial Version Date for a given areasymobl; return a dictionary
-        asDict = getSDMaccessDict(SSA)  #{u'WI001': 'WI001,  2011-08-10,  Adams County, Wisconsin'}
+            iGet += 1
 
-        # if asDict came back empty, try to retrieve information again
-        if len(asDict) < 1:
-            asDict = getSDMaccessDict(SSA)
+            # Query SDMaccess Areaname and Spatial Version Date for a given areasymobl; return a dictionary
+            asDict = getSDMaccessDict(SSA)  #{u'WI001': 'WI001,  2011-08-10,  Adams County, Wisconsin'}
 
-        # Could not get SDaccess info for this SSA - cannot continue
-        if len(asDict) < 1:
-            AddMsgAndPrint("\tCould not get information for " + SSA + " from SD Access",2)
-            failedList.append(SSA)
-            continue
+            # if asDict came back empty, try to retrieve information again
+            if len(asDict) < 1:
+                asDict = getSDMaccessDict(SSA)
 
-        survey = asDict[SSA]
-        surveyInfo = survey.split("|")
+            # Could not get SDaccess info for this SSA - cannot continue
+            if len(asDict) < 1:
+                AddMsgAndPrint("\tCould not get information for " + SSA + " from SD Access",2)
+                failedList.append(SSA)
+                continue
 
-        # Get Areasymbol, Date, and Survey Name from 'asDict'
-        areaSym = surveyInfo[0].strip().upper()  # Why get areaSym again???
-        surveyDate = surveyInfo[1].strip()    # Don't need this since we will always get the most current
-        surveyName = surveyInfo[2].strip()    # Adams County, Wisconsin
+            survey = asDict[SSA]
+            surveyInfo = survey.split("|")
 
-        # set final path to NRCS Geodata Standard for Soils; This is what the unzipped folder will be renamed to
-        newFolder = os.path.join(outputFolder, "soil_" + areaSym.lower())
+            # Get Areasymbol, Date, and Survey Name from 'asDict'
+            areaSym = surveyInfo[0].strip().upper()  # Why get areaSym again???
+            surveyDate = surveyInfo[1].strip()    # Don't need this since we will always get the most current
+            surveyName = surveyInfo[2].strip()    # Adams County, Wisconsin
 
-        if os.path.exists(newFolder):
-            #AddMsgAndPrint("\nOutput dataset for " + areaSym + " already exists and will be overwritten", 0)
-            #arcpy.Delete_management(newFolder, "Folder")
-            AddMsgAndPrint("\tOutput dataset for " + areaSym + " already exists.  Moving to the next one", 0)
-            continue
+            # set final path to NRCS Geodata Standard for Soils; This is what the unzipped folder will be renamed to
+            newFolder = os.path.join(outputFolder, "soil_" + areaSym.lower())
 
-        AddMsgAndPrint("\tDownloading survey " + areaSym + ": " + surveyName + " - Version: " + str(surveyDate), 0)
-        arcpy.SetProgressorLabel("Downloading survey " + areaSym.upper() + "  (" + Number_Format(iGet, 0, True) + " of " + Number_Format(len(asList), 0, True) + ")")
+            if os.path.exists(newFolder):
+                #AddMsgAndPrint("\nOutput dataset for " + areaSym + " already exists and will be overwritten", 0)
+                #arcpy.Delete_management(newFolder, "Folder")
+                AddMsgAndPrint("\tOutput dataset for " + areaSym + " already exists.  Moving to the next one", 0)
+                continue
 
-        # Allow for multiple attempts to get zip file
-        iTry = 2
+            AddMsgAndPrint("\tDownloading survey " + areaSym + ": " + surveyName + " - Version: " + str(surveyDate), 0)
+            arcpy.SetProgressorLabel("Downloading survey " + areaSym.upper() + "  (" + Number_Format(iGet, 0, True) + " of " + Number_Format(len(asList), 0, True) + ")")
 
-        # Download the zip file; Sometimes a corrupt zip file is downloaded, so a second attempt will be made if the first fails
-        for i in range(iTry):
+            # Allow for multiple attempts to get zip file
+            iTry = 2
 
-            try:
-                zipName = GetDownload(areaSym, surveyDate)  # wss_SSA_WI025_soildb_WI_2003_[2012-06-26].zip
+            # Download the zip file; Sometimes a corrupt zip file is downloaded, so a second attempt will be made if the first fails
+            for i in range(iTry):
 
-                # path to the zip file i.e C:\Temp\peaslee_download\wss_SSA_WI025_soildb_WI_2003_[2012-06-26].zip
-                local_zip = os.path.join(outputFolder, zipName)
+                try:
+                    zipName = GetDownload(areaSym, surveyDate)  # wss_SSA_WI025_soildb_WI_2003_[2012-06-26].zip
 
-                # if file is valid zipfile extract the file contents
-                #if os.path.isfile(local_zip):
-                if zipfile.is_zipfile(local_zip):
+                    # path to the zip file i.e C:\Temp\peaslee_download\wss_SSA_WI025_soildb_WI_2003_[2012-06-26].zip
+                    local_zip = os.path.join(outputFolder, zipName)
 
-                    zipSize = (os.stat(local_zip).st_size)/1048576
+                    # if file is valid zipfile extract the file contents
+                    #if os.path.isfile(local_zip):
+                    if zipfile.is_zipfile(local_zip):
 
-                    # Proceed if size of zip file is greater than 0 bytes
-                    if zipSize > 0:
+                        zipSize = (os.stat(local_zip).st_size)/1048576
 
-                        # Less than 1 would be Kilabytes; show 2 decimal places
-                        if zipSize < 1:
-                            AddMsgAndPrint("\t\tUnzipping " + Number_Format(zipSize, 2, True) + " KB file to " + outputFolder, 0)
+                        # Proceed if size of zip file is greater than 0 bytes
+                        if zipSize > 0:
 
-                        # Greater than 1 would be Megabytes; show 1 decimal place
+                            # Less than 1 would be Kilabytes; show 2 decimal places
+                            if zipSize < 1:
+                                AddMsgAndPrint("\t\tUnzipping " + Number_Format(zipSize, 2, True) + " KB file to " + outputFolder, 0)
+
+                            # Greater than 1 would be Megabytes; show 1 decimal place
+                            else:
+                                AddMsgAndPrint("\t\tUnzipping " + Number_Format(zipSize, 1, True) + " MB file to " + outputFolder, 0)
+
+                            # Extract all members from the archive to the current working directory
+                            with zipfile.ZipFile(local_zip, "r") as z:
+                                # a bad zip file returns exception zipfile.BadZipFile
+                                z.extractall(outputFolder)
+
+                            # remove zip file after it has been extracted,
+                            # allowing a little extra time for file lock to clear
+                            sleep(3)
+                            os.remove(local_zip)
+
+                            # rename output folder to NRCS Geodata Standard for Soils
+                            if os.path.isdir(os.path.join(outputFolder, areaSym.upper())):
+                                # this must be a newer zip file using the uppercase AREASYMBOL directory
+                                os.rename(os.path.join(outputFolder, areaSym.upper()), newFolder)
+
+                            elif os.path.isdir(os.path.join(outputFolder, zipName[:-4])):
+                                # this is an older zip file that has the 'wss_' directory structure
+                                os.rename(os.path.join(outputFolder, zipName[:-4]), newFolder)
+
+                            else:
+                                # none of the subfolders within the zip file match any of the expected names
+                                AddMsgAndPrint("Subfolder within the zip file does not match any of the expected names",2)
+                                exit()
+
+                            # import FGDC metadata to mapunit polygon shapefile
+                            spatialFolder = os.path.join(newFolder, "spatial")
+                            env.workspace = spatialFolder
+                            shpList = arcpy.ListFeatureClasses("soilmu_a*", "Polygon")
+
+                            try:
+                                if len(shpList) == 1:
+                                    muShp = shpList[0]
+                                    AddMsgAndPrint("\t\tImporting metadata for " + muShp, 0)
+                                    metaData = os.path.join(newFolder, "soil_metadata_" + areaSym.lower() + ".xml")
+                                    arcpy.ImportMetadata_conversion(metaData, "FROM_FGDC", os.path.join(spatialFolder, muShp), "ENABLED")
+                                    del spatialFolder, muShp, metaData
+
+                            except:
+                                AddMsgAndPrint("\t\tImporting metadata for " + muShp + " Failed.  ", 0)
+                                pass
+
+                            # end of successful zip file download
+                            break
+
+                        # Zip file size is empty.  Attempt again if 2nd attempt has not been executed
                         else:
-                            AddMsgAndPrint("\t\tUnzipping " + Number_Format(zipSize, 1, True) + " MB file to " + outputFolder, 0)
+                            if i == 0:
+                                AddMsgAndPrint("\n\tZip file for " + areaSym + " is empty. Reattempting to download, 1")
+                                os.remove(local_zip)
+                                continue
 
-                        # Extract all members from the archive to the current working directory
-                        with zipfile.ZipFile(local_zip, "r") as z:
-                            # a bad zip file returns exception zipfile.BadZipFile
-                            z.extractall(outputFolder)
-
-                        # remove zip file after it has been extracted,
-                        # allowing a little extra time for file lock to clear
-                        sleep(3)
-                        os.remove(local_zip)
-
-                        # rename output folder to NRCS Geodata Standard for Soils
-                        if os.path.isdir(os.path.join(outputFolder, areaSym.upper())):
-                            # this must be a newer zip file using the uppercase AREASYMBOL directory
-                            os.rename(os.path.join(outputFolder, areaSym.upper()), newFolder)
-
-                        elif os.path.isdir(os.path.join(outputFolder, zipName[:-4])):
-                            # this is an older zip file that has the 'wss_' directory structure
-                            os.rename(os.path.join(outputFolder, zipName[:-4]), newFolder)
-
-                        else:
-                            # none of the subfolders within the zip file match any of the expected names
-                            AddMsgAndPrint("Subfolder within the zip file does not match any of the expected names",2)
-                            exit()
-
-                        # import FGDC metadata to mapunit polygon shapefile
-                        spatialFolder = os.path.join(newFolder, "spatial")
-                        env.workspace = spatialFolder
-                        shpList = arcpy.ListFeatureClasses("soilmu_a*", "Polygon")
-
-                        try:
-                            if len(shpList) == 1:
-                                muShp = shpList[0]
-                                AddMsgAndPrint("\t\tImporting metadata for " + muShp, 0)
-                                metaData = os.path.join(newFolder, "soil_metadata_" + areaSym.lower() + ".xml")
-                                arcpy.ImportMetadata_conversion(metaData, "FROM_FGDC", os.path.join(spatialFolder, muShp), "ENABLED")
-                                del spatialFolder, muShp, metaData
-
-                        except:
-                            AddMsgAndPrint("\t\tImporting metadata for " + muShp + " Failed.  ", 0)
-                            pass
-
-                        # end of successful zip file download
-                        break
-
-                    # Zip file size is empty.  Attempt again if 2nd attempt has not been executed
+                    # Zip file is corrupt or missing
                     else:
                         if i == 0:
-                            AddMsgAndPrint("\n\tZip file for " + areaSym + " is empty. Reattempting to download, 1")
-                            os.remove(local_zip)
+                            AddMsgAndPrint("\n\tZip file for " + areaSym + " is missing. Reattempting to download, 1")
                             continue
 
-                # Zip file is corrupt or missing
-                else:
-                    if i == 0:
-                        AddMsgAndPrint("\n\tZip file for " + areaSym + " is missing. Reattempting to download, 1")
-                        continue
+                # download zip file again if this is first error
+                except (zipfile.BadZipfile, zipfile.LargeZipFile), e:
+                    pass
 
-            # download zip file again if this is first error
-            except (zipfile.BadZipfile, zipfile.LargeZipFile), e:
-                pass
+                except:
+                    pass
 
-            except:
-                pass
+            # download for this survey failed twice
+            if not os.path.exists(newFolder):
+                AddMsgAndPrint("\n\tDownload failed for " + areaSym + ": " + surveyName, 2)
+                failedList.append(SSA)
 
-        # download for this survey failed twice
-        if not os.path.exists(newFolder):
-            AddMsgAndPrint("\n\tDownload failed for " + areaSym + ": " + surveyName, 2)
-            failedList.append(SSA)
+            del asDict, survey, surveyInfo, areaSym, surveyDate, surveyName, newFolder, iTry
+            arcpy.SetProgressorPosition()
 
-        del asDict, survey, surveyInfo, areaSym, surveyDate, surveyName, newFolder, iTry
-        arcpy.SetProgressorPosition()
+        if len(failedList) > 0:
+            AddMsgAndPrint("\n" + str(len(asList) - len(failedList)) + " ouf of " + str(len(asList)) + " were successfully downloaded.",2)
+            AddMsgAndPrint("\tThese surveys failed to download properly: " + ", ".join(failedList),2)
 
-    if len(failedList) > 0:
-        AddMsgAndPrint("\n" + str(len(asList) - len(failedList)) + " ouf of " + str(len(asList)) + " were successfully downloaded.",2)
-        AddMsgAndPrint("\tThese surveys failed to download properly: " + ", ".join(failedList),2)
+        else:
+            AddMsgAndPrint("\nAll SSURGO datasets downloaded successfully\n", 0)
 
-    else:
-        AddMsgAndPrint("\nAll SSURGO datasets downloaded successfully\n", 0)
+        arcpy.SetProgressorLabel("Processing complete...")
+        env.workspace = outputFolder
 
-    arcpy.SetProgressorLabel("Processing complete...")
-    env.workspace = outputFolder
-
-except:
-    errorMsg()
+    except:
+        errorMsg()
