@@ -21,7 +21,7 @@
 # Updated: 2016-12-16 Converted the SOAP request to POST-REST request to SDaccess. -- AD
 
 ## ===================================================================================
-def print_exception():
+def errorMsg():
 
     tb = sys.exc_info()[2]
     l = traceback.format_tb(tb)
