@@ -1296,9 +1296,6 @@ try:
     arcpy.SetProgressorLabel("Processing complete...")
     env.workspace = outputFolder
 
-except MyError, e:
-    AddMsgAndPrint(str(e),2)
-
 except:
     errorMsg()
 
@@ -1308,5 +1305,3 @@ finally:
 
     if len(skippedList) > 0:
         AddMsgAndPrint(" \n\tSkipped because a current version already exists: " + ", ".join(skippedList), 1)
-
-    AddMsgAndPrint(" ", 0)
