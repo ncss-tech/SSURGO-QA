@@ -265,7 +265,7 @@ def getNATMUSYM(listsOfValues, featureLayer):
             if bAreaSym:
                 sQuery = 'SELECT mapunit.mukey, nationalmusym, muname '\
                           'FROM sacatalog ' \
-                          'INNER JOIN legend ON legend.areasymbol = sacatalog.areasymbol AND sacatalog.areasymbol IN (' + values + ')' \
+                          'INNER JOIN legend ON legend.areasymbol = sacatalog.areasymbol AND sacatalog.areasymbol IN (' + values + ') '\
                           'INNER JOIN mapunit ON mapunit.lkey = legend.lkey'
 
             # use this query if submitting request by MUKEY
