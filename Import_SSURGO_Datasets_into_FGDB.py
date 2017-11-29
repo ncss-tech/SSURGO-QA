@@ -851,7 +851,7 @@ def addAttributeIndex(table,fieldList,verbose=True):
             return False
 
         else:
-            if verbose: AddMsgAndPrint("\nAdding Indexes to Table: " + os.path.basename(table))
+            if verbose: AddMsgAndPrint("\n\tAdding Indexes to Table: " + os.path.basename(table))
 
         # iterate through every field
         for fieldToIndex in fieldList:
@@ -859,7 +859,7 @@ def addAttributeIndex(table,fieldList,verbose=True):
             # Make sure field exists in table - Just in case
             if not len(arcpy.ListFields(table,"*" + fieldToIndex))>0:
                 if verbose:
-                    AddMsgAndPrint("\tAttribute index cannot be created for: " + fieldToIndex + ". FIELD DOES NOT EXIST",2)
+                    AddMsgAndPrint("\t\tAttribute index cannot be created for: " + fieldToIndex + ". FIELD DOES NOT EXIST",2)
                     continue
 
             # list of indexes (attribute and spatial) within the table that are
@@ -885,7 +885,7 @@ def addAttributeIndex(table,fieldList,verbose=True):
                         # Field is already part of an existing index - Notify User
                         if fld.name == fieldToIndex:
                             if verbose:
-                                AddMsgAndPrint("\tAttribute Index for " + fieldToIndex + " field already exists",1)
+                                AddMsgAndPrint("\t\tAttribute Index for " + fieldToIndex + " field already exists",1)
                                 bFieldIndexExists = True
 
                     # Field is already part of an existing index - Proceed to next field
@@ -900,7 +900,7 @@ def addAttributeIndex(table,fieldList,verbose=True):
                 arcpy.AddIndex_management(table,fieldToIndex,newIndex,"#","ASCENDING")
 
                 if verbose:
-                    AddMsgAndPrint("\tSuccessfully added attribute index for " + fieldToIndex)
+                    AddMsgAndPrint("\t\tSuccessfully added attribute index for " + fieldToIndex)
 
     except:
         print_exception()
@@ -1025,6 +1025,9 @@ if __name__ == '__main__':
         if userDatum == "D_North_American_1983":
             AddMsgAndPrint("\tGeographic Transformation: WGS_1984_(ITRF00)_To_NAD_1983",0 )
             env.geographicTransformations = "WGS_1984_(ITRF00)_To_NAD_1983"  # WKID 108190
+        elif userDatum == "D_WGS_1984":
+            AddMsgAndPrint("\tCoordinate System: GCS_WGS_1984",0 )
+            #env.geographicTransformations = "WGS_1984_(ITRF00)_To_NAD_1983"  # WKID 108190
         else:
             AddMsgAndPrint("\nCannot handle user Datum: " + str(userDatum) + " Exiting",2)
             sys.exit()
@@ -1393,21 +1396,23 @@ if __name__ == '__main__':
         # ----------------------------------------------------------------------------- Add Attribute Index to specific tables
         if not bSTATSGO:
             arcpy.SetProgressorLabel("Adding Attribute Indexes")
+            AddMsgAndPrint("\nAdding Attribute Indexes")
             if not addAttributeIndex(os.path.join(FGDBpath,"mapunit"),["musym", "muname","mukind","farmlndcl"],False): pass
             if not addAttributeIndex(os.path.join(FGDBpath,"component"),["comppct_r","compname", "compkind","majcompflag","slope_r","taxorder","taxsuborder","taxgrtgroup","taxsubgrp","taxpartsize"],False): pass
             if not addAttributeIndex(os.path.join(FGDBpath,"muaggatt"),["musym","muname","mustatus","flodfreqdcd","drclassdcd","hydgrpdcd","hydclprs"],False):pass
 
 #         ----------------------------------------------------------------------------- Use the Following code to Add indexes to ALL fields
-##        fgdbTables = arcpy.ListTables('*')
-##        fgdbFCs = [fgdbTables.append(fc) for fc in arcpy.ListFeatureClasses('*')]
+##            # Add attribute indexes to ALL tables and feature classes in FGDB
+##            fgdbTables = arcpy.ListTables('*')
+##            fgdbFCs = [fgdbTables.append(fc) for fc in arcpy.ListFeatureClasses('*')]
 ##
-##        AddMsgAndPrint("\nAdding Attribute Indexes")
+##            AddMsgAndPrint("\nAdding Attribute Indexes")
 ##
-##        for table in fgdbTables:
-##            tablePath = os.path.join(FGDBpath,table)
-##            fieldNames = [f.name for f in arcpy.ListFields(tablePath)]
+##            for table in fgdbTables:
+##                tablePath = os.path.join(FGDBpath,table)
+##                fieldNames = [f.name for f in arcpy.ListFields(tablePath)]
 ##
-##            if not addAttributeIndex(tablePath,fieldNames): continue
+##                if not addAttributeIndex(tablePath,fieldNames,True): continue
 
         # ------------------------------------------------------------------------------ Summarize output dataset
         AddMsgAndPrint("\n-------------------------------------------------------------------------------------------------------",1)
