@@ -170,8 +170,20 @@ def AddMsgAndPrint(msg, severity=0):
         pass
 
 ## ================================================================================================================
+def splitThousands(someNumber):
+    """ will determine where to put the thousand seperator if one is needed.
+        Input is an integer.  Integer with or without thousands seperator is returned."""
+
+    try:
+        return re.sub(r'(\d{3})(?=\d)', r'\1,', str(someNumber)[::-1])[::-1]
+
+    except:
+        errorMsg()
+        return someNumber
+
+## ================================================================================================================
 def compareDatum(fc):
-    # Return True if fc datum is either WGS84 or NAD83
+    """ Return True if fc datum is either WGS84 or NAD83"""
 
     try:
         # Create Spatial Reference of the input fc. It must first be converted in to string in ArcGIS10
@@ -189,26 +201,13 @@ def compareDatum(fc):
 
         # Input datum is either WGS84 or NAD83; return true
         if fc_datum == WGS84_datum or fc_datum == NAD83_datum:
-            del fcSpatialRef
-            del FCdatum_start
-            del FCdatum_stop
-            del fc_datum
-            del WGS84_sr
-            del WGS84_datum
-            del NAD83_datum
 
+            del fcSpatialRef,FCdatum_start,FCdatum_stop,fc_datum,WGS84_sr,WGS84_datum,NAD83_datum
             return True
 
         # Input Datum is some other Datum; return false
         else:
-            del fcSpatialRef
-            del FCdatum_start
-            del FCdatum_stop
-            del fc_datum
-            del WGS84_sr
-            del WGS84_datum
-            del NAD83_datum
-
+            del fcSpatialRef,FCdatum_start,FCdatum_stop,fc_datum,WGS84_sr,WGS84_datum,NAD83_datum
             return False
 
     except arcpy.ExecuteError:
@@ -221,9 +220,9 @@ def compareDatum(fc):
 
 ## ================================================================================================================
 def createFGDB(GDBname,outputFolder,spatialRef):
-    # This function will Create a File Geodatabase.  A Feature Dataset will be created if b_FD = True.
-    # 6 feature classes will be created using the SSURGO schema.
-    # Return False if error occurs, True otherwise.
+    """ This function will Create a File Geodatabase.  A Feature Dataset will be created if b_FD = True.
+        6 feature classes will be created using the SSURGO schema.
+        Return False if error occurs, True otherwise. """
 
     try:
         newFGDBpath = os.path.join(outputFolder,GDBname + ".gdb")
@@ -327,9 +326,9 @@ def createFeatureClasses(newFGDBpath,spatialRef):
         return False
 ## ===============================================================================================================
 def GetTableAliases(ssurgoTemplateLoc, tblAliases):
-    # Retrieve physical and alias names from MDSTATTABS table and assigns them to a blank dictionary.
-    # Stores physical names (key) and aliases (value) in a Python dictionary i.e. {chasshto:'Horizon AASHTO,chaashto'}
-    # Fieldnames are Physical Name = AliasName,IEfilename
+    """ Retrieve physical and alias names from MDSTATTABS table and assigns them to a blank dictionary.
+        Stores physical names (key) and aliases (value) in a Python dictionary i.e. {chasshto:'Horizon AASHTO,chaashto'}
+        Fieldnames are Physical Name = AliasName,IEfilename"""
 
     try:
 
@@ -382,13 +381,13 @@ def GetTableAliases(ssurgoTemplateLoc, tblAliases):
         return tblAliases
 
 ## ===============================================================================================================
-def importTabularData(tabularFolder, tblAliases):
-    # This function will import the SSURGO .txt files from the tabular folder.
-    # tabularFolder is the absolute path to the tabular folder.
-    # tblAliases is a list of the physical name of the .txt file along with the Alias name.
-    # Return False if error occurs, true otherwise.  there is a list of files that will not be
-    # imported under "doNotImport".  If the tabular folder is empty or there are no text files
-    # the survey will be skipped.
+def importTabularData(tabularFolder, tblAliases, queue):
+    """ This function will import the SSURGO .txt files from the tabular folder.
+        tabularFolder is the absolute path to the tabular folder.
+        tblAliases is a list of the physical name of the .txt file along with the Alias name.
+        Return False if error occurs, true otherwise.  there is a list of files that will not be
+        imported under "doNotImport".  If the tabular folder is empty or there are no text files
+        the survey will be skipped."""
 
     try:
         env.workspace = FGDBpath
@@ -413,10 +412,10 @@ def importTabularData(tabularFolder, tblAliases):
         # that make up the tabular data set.
         mdstattabsTable = env.workspace + os.sep + "mdstattabs"
 
-        AddMsgAndPrint("\nImporting Tabular Data for: " + SSA,1)
+        AddMsgAndPrint("\n\tImporting Tabular Data for: " + SSA,0)
 
         # set progressor object which allows progress information to be passed for every merge complete
-        arcpy.SetProgressor("step", "Importing Tabular Data for " + SSA, 0, len(GDBTables), 1)
+        arcpy.SetProgressor("step", "Importing Tabular Data for " + SSA + ": " + str(queue) + ' of ' + str(total), 0, len(GDBTables), 1)
 
         # For each item in sorted keys
         for GDBtable in GDBTables:
@@ -449,8 +448,7 @@ def importTabularData(tabularFolder, tblAliases):
                     theAlias = theTab + "(" + aliasName + ")"
                     theRecLength = " " * (48 - len(aliasName))
 
-                    del theTabLength
-                    del theTab
+                    del theTabLength, theTab
 
                     # Continue if the text file contains values. Not Empty file
                     if os.path.getsize(txtPath) > 0:
@@ -568,33 +566,22 @@ def importTabularData(tabularFolder, tblAliases):
         AddMsgAndPrint("\tImporting Tabular Data Failed for: " + SSA,2)
         print_exception()
         return False
-## ===============================================================================================================
-def splitThousands(someNumber):
-# will determine where to put a thousands seperator if one is needed.
-# Input is an integer.  Integer with or without thousands seperator is returned.
-
-    try:
-        return re.sub(r'(\d{3})(?=\d)', r'\1,', str(someNumber)[::-1])[::-1]
-
-    except:
-        print_exception()
-        return someNumber
 
 ## ===============================================================================================================
 def CreateTableRelationships(tblAliases):
-    # Create relationship classes between standalone attribute tables.
-    # Relate parameters are pulled from the mdstatrhipdet and mdstatrshipmas tables,
-    # thus it is required that the tables must have been copied from the template database.
+    """ Create relationship classes between standalone attribute tables.
+        Relate parameters are pulled from the mdstatrhipdet and mdstatrshipmas tables,
+        thus it is required that the tables must have been copied from the template database.
 
-    # Test option of getting aliases from original template database vs. output database
-    # set workspace to original template database
-    # env.workspace = InputDB
-    # or
-    # set workspace to output database.....This script uses output database as workspace
-    # WAIT, take that back.  Using the GDB as a workspace creates locks.  Specifically, the
-    # MakeQueryTable tool creates .rd and .sr locks that are only deleted if Arc is restarted.
-    # Currently use the ssurgoTemplate to create a query table so that it doesn't lock the .GDB
-    # Subfunction is written by Steve Peaslee and modified by Adolfo Diaz.
+        Test option of getting aliases from original template database vs. output database
+        set workspace to original template database
+        env.workspace = InputDB
+        or
+        set workspace to output database.....This script uses output database as workspace
+        WAIT, take that back.  Using the GDB as a workspace creates locks.  Specifically, the
+        MakeQueryTable tool creates .rd and .sr locks that are only deleted if Arc is restarted.
+        Currently use the ssurgoTemplate to create a query table so that it doesn't lock the .GDB
+        Subfunction is written by Steve Peaslee and modified by Adolfo Diaz. """
     #
     #Modified From Steve Peaslee's Setup_UpdateSurvey
     env.workspace = ssurgoTemplate
@@ -785,8 +772,8 @@ def CreateTableRelationships(tblAliases):
 
 ## ===============================================================================================================
 def updateAliasNames(fgdbPath, GDBname):
-# Update the alias name of every feature class in the RTSD including the project record.
-# i.e. alias name for MUPOLYGON = Region 10 - Mapunit Polygon
+    """ Update the alias name of every feature class in the RTSD including the project record.
+        i.e. alias name for MUPOLYGON = Region 10 - Mapunit Polygon """
 
     try:
 
@@ -836,13 +823,13 @@ def updateAliasNames(fgdbPath, GDBname):
 
 ## ===============================================================================================================
 def addAttributeIndex(table,fieldList,verbose=True):
-# Attribute indexes can speed up attribute queries on feature classes and tables.
-# This function adds an attribute index(es) for the fields passed to the table that
-# is passed in. This function takes in 2 parameters:
-#   1) Table - full path to an existing table or feature class
-#   2) List of fields that exist in table
-# This function will make sure an existing index is not associated with that field.
-# Does not return anything.
+    """ Attribute indexes can speed up attribute queries on feature classes and tables.
+        This function adds an attribute index(es) for the fields passed to the table that
+        is passed in. This function takes in 2 parameters:
+           1) Table - full path to an existing table or feature class
+           2) List of fields that exist in table
+        This function will make sure an existing index is not associated with that field.
+        Does not return anything."""
 
     try:
         # Make sure table exists. - Just in case
@@ -851,15 +838,22 @@ def addAttributeIndex(table,fieldList,verbose=True):
             return False
 
         else:
-            if verbose: AddMsgAndPrint("\n\tAdding Indexes to Table: " + os.path.basename(table))
+            if verbose:
+                AddMsgAndPrint("\n\tAdding Attribute Indexes to Table: " + os.path.basename(table))
+                numOfFields = len(fieldList)
+                arcpy.SetProgressor("step", "Adding Attribute Indexes to Table: " + os.path.basename(table), 0, numOfFields, 1)
 
         # iterate through every field
         for fieldToIndex in fieldList:
+
+            if verbose:
+                arcpy.SetProgressorLabel("Adding Attribute Indexes to Table: " + os.path.basename(table) + " - Field: " + fieldToIndex)
 
             # Make sure field exists in table - Just in case
             if not len(arcpy.ListFields(table,"*" + fieldToIndex))>0:
                 if verbose:
                     AddMsgAndPrint("\t\tAttribute index cannot be created for: " + fieldToIndex + ". FIELD DOES NOT EXIST",2)
+                    arcpy.SetProgressorPosition()
                     continue
 
             # list of indexes (attribute and spatial) within the table that are
@@ -886,6 +880,7 @@ def addAttributeIndex(table,fieldList,verbose=True):
                         if fld.name == fieldToIndex:
                             if verbose:
                                 AddMsgAndPrint("\t\tAttribute Index for " + fieldToIndex + " field already exists",1)
+                                arcpy.SetProgressorPosition()
                                 bFieldIndexExists = True
 
                     # Field is already part of an existing index - Proceed to next field
@@ -901,19 +896,20 @@ def addAttributeIndex(table,fieldList,verbose=True):
 
                 if verbose:
                     AddMsgAndPrint("\t\tSuccessfully added attribute index for " + fieldToIndex)
+                    arcpy.SetProgressorPosition()
 
     except:
         print_exception()
         return False
 
-## ====================================== Main Body ===========================================================
+## ================================================================ Main Body ===========================================================
 # Import modules
 import arcpy, sys, string, os, time, datetime, re, csv, traceback, shutil
 from arcpy import env
 
 if __name__ == '__main__':
 
-    # ---------------------------------------------------------------------------------------Input Arguments
+    """ -------------------------------------------------------------------------------------------------------------------Input Arguments"""
     # Parameter # 1: (Required) Name of new file geodatabase to create
     #GDBname = "Test"
     GDBname = arcpy.GetParameterAsText(0)
@@ -969,7 +965,7 @@ if __name__ == '__main__':
         # process each selected soil survey
         AddMsgAndPrint("\nValidating " + str(len(surveyList)) + " selected surveys...", 0)
 
-        # -------------------------------------------------------------------------------------- Create necessary File Geodatabase
+        """ ---------------------------------------------------------------------------------------------------------- Create necessary File Geodatabase"""
         # Create new File Geodatabase, Feature Dataset and Feature Classes.
 
         # SSURGO layer Name
@@ -1032,7 +1028,7 @@ if __name__ == '__main__':
             AddMsgAndPrint("\nCannot handle user Datum: " + str(userDatum) + " Exiting",2)
             sys.exit()
 
-        # --------------------------------------------------------------------------------------- Begin the Merging Process
+        """ ----------------------------------------------------------------------------------------------------------------------------- Setup the Merging Process"""
 
         # Dictionary containing approx center of SSA (key) and the SSURGO layer path (value)
         soilShpDict = dict() # {-4002.988250799742: 'K:\\FY2014_SSURGO_R10_download\\soils_wi063\\spatial\\soilmu_a_wi063.shp'}
@@ -1074,6 +1070,29 @@ if __name__ == '__main__':
             # folder is name in plural format instead of singular.  Accident!!!
             elif subFolder.find("soils_") > -1:
                 SSA = subFolder[-5:].lower()
+
+	       # folder is named with just FIPS i.e. WI001
+            elif len(subFolder) == 5:
+
+   	            for i in range(len(subFolder)):
+        		    asc = ord(subFolder[i])
+
+        		    # First and second char must be uppercase Alpha
+                    if i < 2:
+                        if not asc > 64 or not asc < 91:
+      		                continue
+
+                    # Last 3 characters must be Numeric
+                    elif i < 4:
+                        if not asc > 47 or not asc < 58:
+                          continue
+
+                    # Last character to assess.  Add to list if it is numeric
+                    else:
+                        if asc > 47 and asc < 58:
+                            SSA = subFolder
+                        else:
+                            continue
 
             else:
                 AddMsgAndPrint("\n"+ subFolder + " is not a valid SSURGO folder.....IGNORING",1)
@@ -1136,7 +1155,7 @@ if __name__ == '__main__':
 
             arcpy.SetProgressorPosition()
 
-        # ----------------------------------------------------------------------------------------------------------------------------- Begin the Merging Process
+        """ ----------------------------------------------------------------------------------------------------------------------------- Begin the Merging Process"""
         # Sort shapefiles by extent so that the drawing order is continous
         extentList.sort()
 
@@ -1278,11 +1297,13 @@ if __name__ == '__main__':
         # Strictly Formatting
         AddMsgAndPrint("\n-------------------------------------------------------------------------------------------------------",1)
 
-        # ----------------------------------------------------------------------------------------------------------------------------- Begin the Import Tabular Process
+        """ ----------------------------------------------------------------------------------------------------------------------------- Begin the Import Tabular Process"""
         # Import tabular data if option was selected
         if b_importTabularData:
 
-            i = 0
+            i = 1
+            total = splitThousands(len(soilShpList))
+
             for survey in soilShpList:
 
                 tabularFolder = os.path.join(os.path.dirname(os.path.dirname(survey)),"tabular")
@@ -1296,10 +1317,9 @@ if __name__ == '__main__':
                         SSA = os.path.basename(survey)[9:14].upper()
 
                     # Formatting purposes
-                    if i == 0:
-                        #AddMsgAndPrint("\n------------------------------------------------------------------------------------------------------------ ")
-                        AddMsgAndPrint("Processing: " + SSA,1)
-                    else: AddMsgAndPrint("\nProcessing: " + SSA,1)
+                    if i == 1:
+                        AddMsgAndPrint("Processing: " + SSA + ": " + str(i) + ' of ' + str(total),1)
+                    else: AddMsgAndPrint("\nProcessing: " + SSA + ": " + str(i) + ' of ' + str(total),1)
 
                     # Make a temp copy of the special feature description in the spatial folder and put it in the
                     # tabular folder so that it can be imported.  It will be named "featdesc"
@@ -1324,7 +1344,7 @@ if __name__ == '__main__':
                     importFailed = 0
 
                     # Import the text files into the FGDB tables
-                    if not importTabularData(tabularFolder,tblAliases):
+                    if not importTabularData(tabularFolder,tblAliases,i):
                         importFailed += 1
 
                     # remove the featdesc file from the tabular folder regardless of import success or not
@@ -1406,13 +1426,40 @@ if __name__ == '__main__':
 ##            fgdbTables = arcpy.ListTables('*')
 ##            fgdbFCs = [fgdbTables.append(fc) for fc in arcpy.ListFeatureClasses('*')]
 ##
+##            # Contains names of fields that could not get indexed
+##            fieldsNotIndexed = dict()
+##
 ##            AddMsgAndPrint("\nAdding Attribute Indexes")
 ##
 ##            for table in fgdbTables:
 ##                tablePath = os.path.join(FGDBpath,table)
-##                fieldNames = [f.name for f in arcpy.ListFields(tablePath)]
+##                fieldNames = []
+##
+##                for field in arcpy.ListFields(tablePath):
+##
+##                    # Had to check if text field was too large b/c index was crashing Arc.
+##                    # Specifically, have some fields that are 2147483647 in length and causes
+##                    # Arc to crash.  PASS or Continue doesn't work
+##                    if field.type == "String" and field.length > 10000:
+##
+##                        if not fieldsNotIndexed.has_key(table):
+##                            fieldsNotIndexed.setdefault(table,[field.name])
+##                        else:
+##                            fieldsNotIndexed[table].append(field.name)
+##
+##                    else:
+##                        fieldNames.append(field.name)
 ##
 ##                if not addAttributeIndex(tablePath,fieldNames,True): continue
+##
+##            # Report any fields that did not get indexed
+##            if fieldsNotIndexed:
+##                AddMsgAndPrint("\nThe following fields could not be indexed:",1)
+##
+##                for rec in fieldsNotIndexed.iteritems():
+##                    AddMsgAndPrint("\tTable: " + rec[0],1)
+##                    for fld in rec[1]:
+##                        AddMsgAndPrint("\t\t" + fld)
 
         # ------------------------------------------------------------------------------ Summarize output dataset
         AddMsgAndPrint("\n-------------------------------------------------------------------------------------------------------",1)
