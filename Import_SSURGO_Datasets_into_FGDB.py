@@ -400,8 +400,9 @@ def importTabularData(tabularFolder, tblAliases, queue):
 
         # Do not import the following SSURGO text files.  Most are metadata text files that are
         # used within the access template and/or SDV.  No need to import them into GDB.
-        doNotImport = ["featline","featpoint","month","msdomdet","msdommas","msidxdet","msidxmas","msrsdet",
-                       "msrsmas","mstab","mstabcol","mupoint","muline","sapolygon""version"]
+##        doNotImport = ["msdomdet","msdommas","msidxdet","msidxmas","msrsdet",
+##                       "msrsmas","mstab","mstabcol","version"]
+        doNotImport = ["month"]
 
         # if the tabular directory is empty return False
         if len(os.listdir(tabularFolder)) < 1:
@@ -419,6 +420,11 @@ def importTabularData(tabularFolder, tblAliases, queue):
 
         # For each item in sorted keys
         for GDBtable in GDBTables:
+
+            # Metadata tables only have to be imported once b/c they are national tables.
+            if GDBtable.find('mds') > -1 or GDBtable.find('distinterpmd') > -1:
+                if int(arcpy.GetCount_management(os.path.join(FGDBpath,GDBtable)).getOutput(0)) > 0:
+                    continue
 
             # physicalName (tablabel,iefilename)
             # i.e. {chaashto:'Horizon AASHTO',chaashto}
@@ -532,7 +538,7 @@ def importTabularData(tabularFolder, tblAliases, queue):
                         AddMsgAndPrint("\t\t--> " + iefileName + theAlias + theRecLength + " Records Added: 0",0)
 
                 else:
-                    AddMsgAndPrint("\t\t--> " + iefileName + " does NOT exist tabular folder.....SKIPPING ",2)
+                    AddMsgAndPrint("\t\t--> " + iefileName + " does NOT exist in tabular folder.....SKIPPING ",2)
 
             arcpy.SetProgressorPosition()
 
