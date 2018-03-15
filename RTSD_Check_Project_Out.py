@@ -452,7 +452,7 @@ try:
         if not arcpy.Exists(regionOwnership):
             raise ExitError, "Region ownership layer was not found under " + os.path.dirname(sys.argv[0])
 
-        searchString = searchString.replace("&","?")   # Replace '&' for '?';ampersand in project named messed up URL parameter
+        searchString = searchString.replace("&","?").replace("*","%")   # Replace '&' for '?';ampersand in project named messed up URL parameter
 
         # Hardcode NASIS-LIMS Report Webservice
         # Runs SDJR Status Report: Returns projects with similar name
