@@ -6,9 +6,13 @@
 #
 # Check all spatial AREASYMBOL and other specified attribute values for correct formatting
 # Check all spatial AREASYMBOL values to confirm that they exist in Web Soil Survey
-
+#
 # Last Modified: 2/8/2017 to Convert the SOAP request to POST-REST request to SDaccess. -- AD
 # Only 1 Post-rest request was needed.  TEST
+#
+# Upated 4/6/2108 by Adolfo Diaz
+# converted dictionary keys "FORMAT" and "QUERY" to lower case in the JSON request.
+# Also updated the tool to exclude non-SSURGO valid fields using the validation code.
 
 class MyError(Exception):
     pass
@@ -61,17 +65,16 @@ def CheckAreasymbols(asList):
         # select by list of Areasymbols only
         sQuery = "SELECT AREASYMBOL FROM SASTATUSMAP WHERE AREASYMBOL IN (" + str(asList)[1:-1] + ") AND SAPUBSTATUSCODE = 2 ORDER BY AREASYMBOL"
 
-        theURL = "https://sdmdataaccess.nrcs.usda.gov"
-        url = theURL + "/Tabular/SDMTabularService/post.rest"
+        theURL = "https://sdmdataaccess.nrcs.usda.gov/Tabular/SDMTabularService/post.rest"
 
         # Create request using JSON, return data as JSON
         dRequest = dict()
-        dRequest["FORMAT"] = "JSON"
-        dRequest["QUERY"] = sQuery
+        dRequest["format"] = "JSON"
+        dRequest["query"] = sQuery
         jData = json.dumps(dRequest)
 
         # Send request to SDA Tabular service using urllib2 library
-        req = urllib2.Request(url, jData)
+        req = urllib2.Request(theURL, jData)
         resp = urllib2.urlopen(req)
         jsonString = resp.read()      # {"Table":[["MT605"],["MT610"],["MT612"]]}
 
@@ -179,7 +182,7 @@ def ProcessLayer(inLayer, inFields, bValidate):
 
         for fld in inFields:
             if fld not in fieldList:
-                fieldList.append(fld.value.upper())
+                fieldList.append(fld)
 
         polygonList = list()
         asList = list()
@@ -199,7 +202,6 @@ def ProcessLayer(inLayer, inFields, bValidate):
                     # Skip first field which is OBJECTID
                     fld = fieldList[i]
                     val = row[i]
-
 
                     if not val is None:
 
@@ -223,7 +225,7 @@ def ProcessLayer(inLayer, inFields, bValidate):
 
                             if chk1 != "":
                                 bGood = False
-                                PrintMsg("\tBad " + fld + " for polygon " + str(fid) + ": '" + val + "'", 0)
+                                PrintMsg("\tBad " + fld + " for polygon " + str(fid) + ": '" + val + "'", 2)
                                 polygonList.append(fid)
 
                             else:
@@ -260,26 +262,28 @@ def ProcessLayer(inLayer, inFields, bValidate):
 
                             if chk2 != "":
                                 bGood = False
-                                PrintMsg("\tBad " + fld + " for polygon " + str(fid) + ": '" + val + "'", 0)
+                                PrintMsg("\tBad " + fld + " for polygon " + str(fid) + ": '" + val + "'", 2)
 
                                 if not fid in polygonList:
                                     # Add problem polygon to list for end report
                                     polygonList.append(fid)
 
                     else:
-                        PrintMsg("\tBad " + fld + " for polygon " + str(fid) + ": '" + str(val) + "'", 0)
+                        PrintMsg("\tBad " + fld + " for polygon " + str(fid) + ": '" + str(val) + "'", 2)
                         polygonList.append(fid)
 
                 arcpy.SetProgressorPosition()
 
+        arcpy.ResetProgressor()
+
         if bGood == False:
-            PrintMsg(" \nPolygons with attribute formatting errors: " + str(polygonList)[1:-1] + " \n ", 0)
+            PrintMsg(" \nThe following polygon IDs have attribute formatting errors: " + str(polygonList)[1:-1] + " \n ", 2)
 
         if bValidate:
             # Run the list of correctly formatted areasymbol values to make sure they exist in Web Soil Survey
             # What about Initial Soil Surveys with a new AREASYMBOL?
             #
-            PrintMsg(" \nValidating Areasymbol list against Web Soi Survey: " + str(asList), 0)
+            PrintMsg(" \nValidating " + str(len(asList)) + " Areasymbol(s) against Web Soi Survey: ", 0)
             bValid = CheckAreasymbols(asList)
 
         return bGood
@@ -326,6 +330,10 @@ try:
 
     # Target attribute column
     inFields = arcpy.GetParameter(1)
+
+##    PrintMsg(str(type(inFields)))
+##    PrintMsg(str(inFields))
+##    exit()
 
     # Setup: Get all required information from input layer
     #
