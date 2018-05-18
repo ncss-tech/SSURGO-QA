@@ -734,30 +734,31 @@ def CreateTableRelationships(tblAliases):
                 arcpy.CreateRelationshipClass_management(FGDBpath + os.sep + soilFC, FGDBpath + os.sep + "muaggatt", FGDBpath + os.sep + "xSpatial_MUPOLYGON_Muaggatt", "SIMPLE", "> Mapunit Aggregate Table", "< MUPOLYGON_Spatial", "NONE","ONE_TO_ONE", "NONE","MUKEY","mukey", "","")
             AddMsgAndPrint("\t" + soilFC + formatTabLength1 + "muaggatt" + "           --> " + "ONE_TO_ONE" + "  --> " + "xSpatial_MUPOLYGON_Muaggatt", 0)
 
-            # Relationship between SAPOLYGON --> Legend Table
-            if not arcpy.Exists("xSpatial_SAPOLYGON_Legend"):
-                arcpy.CreateRelationshipClass_management(FGDBpath + os.sep + soilSaFC, FGDBpath + os.sep + "legend", FGDBpath + os.sep + "xSpatial_SAPOLYGON_Legend", "SIMPLE", "> Legend Table", "< SAPOLYGON_Spatial", "NONE","ONE_TO_ONE", "NONE","LKEY","lkey", "","")
-            AddMsgAndPrint("\t" + soilSaFC + formatTabLength1 + "legend" + "             --> " + "ONE_TO_ONE" + "  --> " + "xSpatial_SAPOLYGON_Legend", 0)
+            if not bSTATSGO:
+    			# Relationship between SAPOLYGON --> Legend Table
+    			if not arcpy.Exists("xSpatial_SAPOLYGON_Legend"):
+    				arcpy.CreateRelationshipClass_management(FGDBpath + os.sep + soilSaFC, FGDBpath + os.sep + "legend", FGDBpath + os.sep + "xSpatial_SAPOLYGON_Legend", "SIMPLE", "> Legend Table", "< SAPOLYGON_Spatial", "NONE","ONE_TO_ONE", "NONE","LKEY","lkey", "","")
+    			AddMsgAndPrint("\t" + soilSaFC + formatTabLength1 + "legend" + "			 --> " + "ONE_TO_ONE" + "  --> " + "xSpatial_SAPOLYGON_Legend", 0)
 
-            # Relationship between MULINE --> Mapunit Table
-            if not arcpy.Exists("xSpatial_MULINE_Mapunit"):
-                arcpy.CreateRelationshipClass_management(FGDBpath + os.sep + muLineFC, FGDBpath + os.sep + "mapunit", FGDBpath + os.sep + "xSpatial_MULINE_Mapunit", "SIMPLE", "> Mapunit Table", "< MULINE_Spatial", "NONE","ONE_TO_ONE", "NONE","MUKEY","mukey", "","")
-            AddMsgAndPrint("\t" + muLineFC + "         --> mapunit" + "            --> " + "ONE_TO_ONE" + "  --> " + "xSpatial_MULINE_Mapunit", 0)
+    			# Relationship between MULINE --> Mapunit Table
+    			if not arcpy.Exists("xSpatial_MULINE_Mapunit"):
+    				arcpy.CreateRelationshipClass_management(FGDBpath + os.sep + muLineFC, FGDBpath + os.sep + "mapunit", FGDBpath + os.sep + "xSpatial_MULINE_Mapunit", "SIMPLE", "> Mapunit Table", "< MULINE_Spatial", "NONE","ONE_TO_ONE", "NONE","MUKEY","mukey", "","")
+    			AddMsgAndPrint("\t" + muLineFC + "		 --> mapunit" + "			--> " + "ONE_TO_ONE" + "  --> " + "xSpatial_MULINE_Mapunit", 0)
 
-            # Relationship between MUPOINT --> Mapunit Table
-            if not arcpy.Exists("xSpatial_MUPOINT_Mapunit"):
-                arcpy.CreateRelationshipClass_management(FGDBpath + os.sep + muPointFC, FGDBpath + os.sep + "mapunit", FGDBpath + os.sep + "xSpatial_MUPOINT_Mapunit", "SIMPLE", "> Mapunit Table", "< MUPOINT_Spatial", "NONE","ONE_TO_ONE", "NONE","MUKEY","mukey", "","")
-            AddMsgAndPrint("\t" + muPointFC + "        --> mapunit" + "            --> " + "ONE_TO_ONE" + "  --> " + "xSpatial_MUPOINT_Mapunit", 0)
+    			# Relationship between MUPOINT --> Mapunit Table
+    			if not arcpy.Exists("xSpatial_MUPOINT_Mapunit"):
+    				arcpy.CreateRelationshipClass_management(FGDBpath + os.sep + muPointFC, FGDBpath + os.sep + "mapunit", FGDBpath + os.sep + "xSpatial_MUPOINT_Mapunit", "SIMPLE", "> Mapunit Table", "< MUPOINT_Spatial", "NONE","ONE_TO_ONE", "NONE","MUKEY","mukey", "","")
+    			AddMsgAndPrint("\t" + muPointFC + "		--> mapunit" + "			--> " + "ONE_TO_ONE" + "  --> " + "xSpatial_MUPOINT_Mapunit", 0)
 
-            # Relationship between FEATLINE --> Featdesc Table
-            if not arcpy.Exists("xSpatial_FEATLINE_Featdesc"):
-                arcpy.CreateRelationshipClass_management(FGDBpath + os.sep + featLineFC, FGDBpath + os.sep + "featdesc", FGDBpath + os.sep + "xSpatial_FEATLINE_Featdesc", "SIMPLE", "> Featdesc Table", "< FEATLINE_Spatial", "NONE","ONE_TO_ONE", "NONE","FEATKEY","featkey", "","")
-            AddMsgAndPrint("\t" + featLineFC + "       --> featdesc" + "           --> " + "ONE_TO_ONE" + "  --> " + "xSpatial_FEATLINE_Featdesc", 0)
+    			# Relationship between FEATLINE --> Featdesc Table
+    			if not arcpy.Exists("xSpatial_FEATLINE_Featdesc"):
+    				arcpy.CreateRelationshipClass_management(FGDBpath + os.sep + featLineFC, FGDBpath + os.sep + "featdesc", FGDBpath + os.sep + "xSpatial_FEATLINE_Featdesc", "SIMPLE", "> Featdesc Table", "< FEATLINE_Spatial", "NONE","ONE_TO_ONE", "NONE","FEATKEY","featkey", "","")
+    			AddMsgAndPrint("\t" + featLineFC + "	   --> featdesc" + "		   --> " + "ONE_TO_ONE" + "  --> " + "xSpatial_FEATLINE_Featdesc", 0)
 
-            # Relationship between FEATPOINT --> Featdesc Table
-            if not arcpy.Exists("xSpatial_FEATPOINT_Featdesc"):
-                arcpy.CreateRelationshipClass_management(FGDBpath + os.sep + featPointFC, FGDBpath + os.sep + "featdesc", FGDBpath + os.sep + "xSpatial_FEATPOINT_Featdesc", "SIMPLE", "> Featdesc Table", "< FEATPOINT_Spatial", "NONE","ONE_TO_ONE", "NONE","FEATKEY","featkey", "","")
-            AddMsgAndPrint("\t" + featPointFC + formatTabLength1 + "featdesc" + "           --> " + "ONE_TO_ONE" + "  --> " + "xSpatial_FEATPOINT_Featdesc", 0)
+    			# Relationship between FEATPOINT --> Featdesc Table
+    			if not arcpy.Exists("xSpatial_FEATPOINT_Featdesc"):
+    				arcpy.CreateRelationshipClass_management(FGDBpath + os.sep + featPointFC, FGDBpath + os.sep + "featdesc", FGDBpath + os.sep + "xSpatial_FEATPOINT_Featdesc", "SIMPLE", "> Featdesc Table", "< FEATPOINT_Spatial", "NONE","ONE_TO_ONE", "NONE","FEATKEY","featkey", "","")
+    			AddMsgAndPrint("\t" + featPointFC + formatTabLength1 + "featdesc" + "		   --> " + "ONE_TO_ONE" + "  --> " + "xSpatial_FEATPOINT_Featdesc", 0)
 
             del formatTab1, formatTabLength1
 
@@ -1109,8 +1110,10 @@ if __name__ == '__main__':
             # Paths to individual SSURGO layers
             if bSTATSGO:
                 soilShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "gsmsoilmu_a_" + SSA + ".shp")
+                soilSaShpPath = soilShpPath
             else:
                 soilShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "soilmu_a_" + SSA + ".shp")
+                soilSaShpPath = soilShpPath
 
             if not bSTATSGO:
                 muLineShpPath = os.path.join( os.path.join(sdmLibrary, os.path.join(subFolder, "spatial")), "soilmu_l_" + SSA + ".shp")
@@ -1134,6 +1137,7 @@ if __name__ == '__main__':
                     # Assign {-4002.988250799742: 'K:\\FY2014_SSURGO_R10_download\\soils_wi063\\spatial\\soilmu_a_wi063.shp'}
                     soilShpDict[surveyCenter] = soilShpPath
 
+                    # statsgo does not have any of these extra features
                     if not bSTATSGO:
                         muLineShpDict[surveyCenter] = muLineShpPath
                         muPointShpDict[surveyCenter] = muPointShpPath
@@ -1174,9 +1178,10 @@ if __name__ == '__main__':
             for surveyCenter in extentList:
 
                 soilShpList.append(soilShpDict[surveyCenter])
-                soilSaShpList.append(soilSaShpDict[surveyCenter])
 
                 if not bSTATSGO:
+                    soilSaShpList.append(soilSaShpDict[surveyCenter])
+
                     if int(arcpy.GetCount_management(muLineShpDict[surveyCenter]).getOutput(0)) > 0:
                         muLineShpList.append(muLineShpDict[surveyCenter])
 
