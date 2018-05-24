@@ -223,7 +223,7 @@ def createFGDB(regionChoice,outputFolder):
         else:
             FY = "FY" + str(datetime.now().strftime("%y"))
 
-        # Alask = NAD_1983_Alaska_Albers
+        # Alaska = Alaska Albers Equal Area Conic (NAD_1983_Alaska_Albers) wkid: 3338
         if regionChoice == "Region 1 - AK":
             xmlFile = os.path.dirname(sys.argv[0]) + os.sep + "RTSD_XMLWorkspace_Alaska.xml"
             newName = "RTSD_Region_1_Alaska_" + FY
@@ -320,10 +320,7 @@ def parseDatumAndProjection(spatialReference):
         userProjection_Stop = spatialReference.find(",",userProjection_Start) - 1
         userProjectionName = spatialReference[userProjection_Start:userProjection_Stop]
 
-        del userDatum_Start
-        del userDatum_Stop
-        del userProjection_Start
-        del userProjection_Stop
+        del userDatum_Start, userDatum_Stop, userProjection_Start, userProjection_Stop
 
         if userProjectionName != "" or userDatum != "":
 
