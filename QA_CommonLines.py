@@ -290,11 +290,12 @@ try:
             try:
                 sleep(3)
 
-                if arcpy.TestSchemaLock(comFC2):
-                    arcpy.Delete_management(comFC2)
+##                if arcpy.TestSchemaLock(comFC2):
+                arcpy.Delete_management(comFC2)
 
-                else:
-                    raise MyError, "Unable to overwrite existing featureclass '" + comFC2+ "' (schemalock)"
+##                else:
+##                    errorMsg()
+##                    raise MyError, "Unable to overwrite existing featureclass '" + comFC2+ "' (schemalock)"
 
             except:
                 errorMsg()
@@ -304,15 +305,16 @@ try:
             # Having problems removing this when two successive runs are made with this tool.
             #
             try:
-                sleep()
+                sleep(3)
 
-                if arcpy.TestSchemaLock(comFC):
-                    arcpy.Delete_management(comFC)
-
-                else:
-                    raise MyError, "Unable to overwrite existing featureclass '" + comFC + "' (schemalock)"
+##                if arcpy.TestSchemaLock(comFC):
+                arcpy.Delete_management(comFC)
+##
+##                else:
+##                    raise MyError, "Unable to overwrite existing featureclass '" + comFC + "' (schemalock)"
 
             except:
+                errorMsg()
                 raise MyError, "Unable to overwrite existing featureclass '" + comFC
 
         # set output map layer name
@@ -344,11 +346,11 @@ try:
             if arcpy.Exists(comFC):
                 try:
                     sleep(3)
-                    if arcpy.TestSchemaLock (comFC):
-                        arcpy.Delete_management(comFC, "Featureclass")
-
-                    else:
-                        PrintMsg(" \nFailed to get schemalock on " + comFC, 0)
+##                    if arcpy.TestSchemaLock (comFC):
+                    arcpy.Delete_management(comFC, "Featureclass")
+##
+##                    else:
+##                        PrintMsg(" \nFailed to get schemalock on " + comFC, 0)
 
                 except:
                     errorMsg()
@@ -480,11 +482,11 @@ try:
                     try:
                         sleep(3)
 
-                        if arcpy.TestSchemaLock(comFC):
-                            arcpy.Delete_management(comFC)
-
-                        else:
-                            raise MyError, "Unable to overwrite existing featureclass '" + comFC + "' (schemalock)"
+##                        if arcpy.TestSchemaLock(comFC):
+                        arcpy.Delete_management(comFC)
+##
+##                        else:
+##                            raise MyError, "Unable to overwrite existing featureclass '" + comFC + "' (schemalock)"
 
                     except:
                         errorMsg()
