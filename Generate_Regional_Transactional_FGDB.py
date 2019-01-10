@@ -209,12 +209,6 @@ def createFGDB(regionChoice,outputFolder):
     # FD.  Return new name of RTSD otherwise return empty string.
 
     try:
-        targetGDB = os.path.join(outputFolder,"TempRTSD.gdb")
-
-        if arcpy.Exists(targetGDB):
-            arcpy.Delete_management(targetGDB)
-
-        arcpy.CreateFileGDB_management(outputFolder,"TempRTSD")
 
         # New fiscal year if month October, November and December
         month = int(datetime.now().strftime("%m"))
@@ -257,38 +251,39 @@ def createFGDB(regionChoice,outputFolder):
         if not arcpy.Exists(xmlFile):
             AddMsgAndPrint(os.path.basename(xmlFile) + " was not found!",2)
             arcpy.Delete_management(targetGDB)
-            return ""
+            return False
 
-        arcpy.ImportXMLWorkspaceDocument_management(targetGDB, xmlFile, "SCHEMA_ONLY", "DEFAULTS")
+        # Create new FGDB with RTSD name
+        targetGDB = os.path.join(outputFolder, newName + '.gdb')
 
         # if Transactional Spatial Database exists delete it
-        if arcpy.Exists(os.path.join(outputFolder,newName + ".gdb")):
+        if arcpy.Exists(targetGDB):
 
             try:
                 AddMsgAndPrint("\n" + newName + ".gdb already exists, deleting",1)
-                arcpy.Delete_management(os.path.join(outputFolder,newName + ".gdb"))
+                arcpy.Delete_management(targetGDB)
 
             except:
-                AddMsgAndPrint("\nFailed to Delte " + os.path.join(outputFolder,newName + ".gdb",2))
-                return ""
+                AddMsgAndPrint("\nFailed to Delte " + targetGDB,2)
+                return False
 
-        arcpy.Rename_management(targetGDB,newName)
-        arcpy.RefreshCatalog(os.path.join(outputFolder,newName + '.gdb'))
+        arcpy.CreateFileGDB_management(outputFolder, newName + '.gdb')
+        arcpy.ImportXMLWorkspaceDocument_management(targetGDB, xmlFile, "SCHEMA_ONLY", "DEFAULTS")
+        arcpy.RefreshCatalog(outputFolder)
 
         AddMsgAndPrint("\nSuccessfully Created RTSD File GDB: " + newName + ".gdb")
 
         del targetGDB,FY,xmlFile
-
         return newName + ".gdb"
 
     except arcpy.ExecuteError:
         AddMsgAndPrint(arcpy.GetMessages(2),2)
-        return ""
+        return False
 
     except:
         AddMsgAndPrint("Unhandled exception (createFGDB)", 2)
         print_exception()
-        return ""
+        return False
 
 ## ================================================================================================================
 def parseDatumAndProjection(spatialReference):
@@ -796,8 +791,9 @@ if __name__ == '__main__':
         # -------------------------------------------------------------------------------------- Create Empty Regional Transactional File Geodatabase
         RTSDname = createFGDB(regionChoice, outputFolder)
 
-        if RTSDname == "":
+        if not RTSDname:
             AddMsgAndPrint("\nFailed to Initiate Empty Regional Transactional Database.  Error in createFGDB() function. Exiting!",2)
+            exit()
 
         # Path to Regional FGDB
         FGDBpath = os.path.join(outputFolder,RTSDname)
