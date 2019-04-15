@@ -287,6 +287,7 @@ def createFGDB(regionChoice,outputFolder):
 
 ## ================================================================================================================
 def parseDatumAndProjection(spatialReference):
+    # -------------  THIS FUNCTION IS OBSOLETE.  Transformation method i
     # This functions extracts the Datum and Projection name from the user-defined
     # spatial Reference.  If the Datum is NAD83 then a transformation method will
     # set as an env transformation method other wise none will be applied.
