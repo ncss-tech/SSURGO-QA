@@ -437,9 +437,9 @@ def createTopology(RTSD_FD):
 
         # Create New topology
         arcpy.SetProgressorLabel("Creating Topology")
-        arcpy.CreateTopology_management(RTSD_FD, "FD_RTSD_Topology", 0.1)
+        arcpy.CreateTopology_management(RTSD_FD, "FD_RTSD_Topology", 0.2)
         newTopology = os.path.join(RTSD_FD,"FD_RTSD_Topology")
-        AddMsgAndPrint("\tCreated Topology: FD_RTSD_Topology at 0.1m cluster tolerance",0)
+        AddMsgAndPrint("\tCreated Topology: FD_RTSD_Topology at 0.2m cluster tolerance",0)
         arcpy.SetProgressorPosition()
 
         # Add feature classes to topology

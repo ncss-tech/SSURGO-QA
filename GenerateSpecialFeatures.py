@@ -82,7 +82,7 @@ def sfDict():
 
     try:
 
-        spfeatD = {'BLO':('Blowout','A saucer-, cup-, or trough-shaped depression formed by wind erosion on a pre-existing dune or other sand deposit, especially in an area of shifting sand or loose soil or where protective vegetation is disturbed or destroyed. The adjoining accumulation of sand derived from the depression, where recognizable, is commonly included. Blowouts are commonly small.  Typically__to__acres.'),
+        spfeatD = {'BLO':('Blowout','A saucer, cup, or trough-shaped depression formed by wind erosion on a pre-existing dune or other sand deposit, especially in an area of shifting sand or loose soil or where protective vegetation is disturbed or destroyed. The adjoining accumulation of sand derived from the depression, where recognizable, is commonly included. Blowouts are commonly small.  Typically__to__acres.'),
             'BPI':('Borrow pit','An open excavation from which soil and underlying material have been removed, usually for construction purposes.  Typically__to__acres.'),
             'CLA':('Clay spot','A spot where the surface texture is silty clay or clay in areas where the surface layer of the soils in the surrounding map unit is sandyloam, loam, silt loam, or coarser.  Typically__to__acres.'),
             'DEP':('Depression, closed','A shallow, saucer-shaped area that is slightly lower on the landscape than the surrounding area and that does not have a natural outlet for surface drainage. Typically__to__acres.'),
