@@ -81,15 +81,18 @@ try:
         zipSSA.append(str(arcpy.GetParameterAsText(0).strip(';')) + os.sep + eSSA)
 
     for SSA in zipSSA:
+        PrintMsg("----------------" + SSA)
         arcpy.SetProgressorLabel('Archiving: ' + os.path.basename(SSA))
         PrintMsg(' \n ' + 'Creating zip archive for ' + os.path.basename(SSA) + '\n', 0)
 
         try:
             with zipfile.ZipFile(SSA.lower() + '.zip', 'w', zipfile.ZIP_DEFLATED) as outZip:
+                PrintMsg(SSA.lower() + '.zip')
                 for dirpath, dirnames, filenames in os.walk(SSA):
                     #outZip.write(dirpath)
                     for filename in filenames:
                         outZip.write(os.path.join(dirpath, filename), os.path.basename(SSA.lower()) + os.sep + filename)
+                        PrintMsg(os.path.join(dirpath, filename) + "---------" +  os.path.basename(SSA.lower()) + os.sep + filename)
             outZip.close()
 
         except:
