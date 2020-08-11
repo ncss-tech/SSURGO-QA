@@ -697,7 +697,7 @@ def importTabularData(tabularFolder, tblAliases):
                                 else:
                                     fldLengths.append(0)
 
-                        del fieldList, field
+                        del fieldList
 
                         # The csv file might contain very huge fields, therefore increase the field_size_limit:
                         # Exception thrown with IL177 in legend.txt.  Not sure why, only 1 record was present
